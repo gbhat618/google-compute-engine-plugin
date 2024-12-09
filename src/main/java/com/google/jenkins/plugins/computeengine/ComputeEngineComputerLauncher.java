@@ -441,6 +441,7 @@ public abstract class ComputeEngineComputerLauncher extends ComputerLauncher {
                 Thread.sleep(SSH_SLEEP_MILLIS);
             } catch (IOException e) {
                 logWarning(computer, listener, String.format("An error occured: %s", e.getMessage()));
+                Thread.sleep(SSH_SLEEP_MILLIS);
             }
         }
     }
