@@ -89,9 +89,32 @@
                 <f:entry field="machineType" title="${%Machine Type}">
                     <f:select/>
                 </f:entry>
-                <f:entry field="preemptible" title="${%Preemptible?}">
+                <f:entry field="preemptible" title="${%Spot VM ? previously Preemptible}">
                     <f:checkbox/>
                 </f:entry>
+                <f:entry field="maxRunDurationSeconds" title="${%Max Run Duration Seconds}">
+                    <f:textbox/>
+                </f:entry>
+
+                <script>
+                    var preemptibleField = document.getElementsByName('_.preemptible')[0];
+                    var maxRunDurationSecondsField = document.getElementsByName('_.maxRunDurationSeconds')[0];
+                    function updateMaxRunDuration() {
+                        console.log("[debugging]:", preemptibleField.checked);
+                        if (preemptibleField.checked &amp;&amp; maxRunDurationSecondsField.value == '0') {
+                            maxRunDurationSecondsField.value = '86400'; // 24 hours in seconds
+                        } else if (!preemptibleField.checked &amp;&amp; maxRunDurationSecondsField.value == '86400') {
+                            maxRunDurationSecondsField.value = '0';
+                        }
+                    }
+                    function registerEvent() {
+                        console.log("[debugging]: attaching the event listener");
+                        preemptibleField.addEventListener('change', updateMaxRunDuration);
+                    }
+                    registerEvent();
+                    updateMaxRunDuration();
+                </script>
+
                 <f:entry field="minCpuPlatform" title="${%Minimum Cpu Platform}">
                     <f:select/>
                 </f:entry>

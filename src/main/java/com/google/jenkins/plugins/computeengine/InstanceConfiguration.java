@@ -19,6 +19,7 @@ package com.google.jenkins.plugins.computeengine;
 import static com.google.cloud.graphite.platforms.plugin.client.util.ClientUtil.nameFromSelfLink;
 import static com.google.jenkins.plugins.computeengine.ComputeEngineCloud.checkPermissions;
 
+import com.google.api.client.json.GenericJson;
 import com.google.api.services.compute.model.AcceleratorConfig;
 import com.google.api.services.compute.model.AttachedDisk;
 import com.google.api.services.compute.model.AttachedDiskInitializeParams;
@@ -121,6 +122,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     private String numExecutorsStr;
     private String startupScript;
     private boolean preemptible;
+    private long maxRunDurationSeconds;
     private String minCpuPlatform;
     private String labels;
     private String runAsUser;
@@ -494,7 +496,16 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
     private Scheduling scheduling() {
         Scheduling scheduling = new Scheduling();
-        scheduling.setPreemptible(preemptible);
+        if (preemptible) {
+            scheduling.setProvisioningModel("SPOT");
+            scheduling.setInstanceTerminationAction("DELETE");
+        }
+        if (maxRunDurationSeconds > 0) {
+            GenericJson j = new GenericJson();
+            j.set("seconds", maxRunDurationSeconds);
+            scheduling.set("maxRunDuration", j);
+            scheduling.setInstanceTerminationAction("DELETE");
+        }
         return scheduling;
     }
 
@@ -783,6 +794,18 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             return FormValidation.ok();
         }
 
+        public FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
+            try {
+                long maxRunDurationSeconds = Long.parseLong(value);
+                if (maxRunDurationSeconds < 0) {
+                    return FormValidation.error("Max run duration must be greater than or equal to 0");
+                }
+                return FormValidation.ok();
+            } catch (NumberFormatException e) {
+                return FormValidation.error("Max run duration must be non-negative number");
+            }
+        }
+
         public ListBoxModel doFillMinCpuPlatformItems(
                 @AncestorInPath Jenkins context,
                 @QueryParameter("projectId") @RelativePath("..") final String projectId,
@@ -959,6 +982,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             instanceConfiguration.setNumExecutorsStr(this.numExecutorsStr);
             instanceConfiguration.setStartupScript(this.startupScript);
             instanceConfiguration.setPreemptible(this.preemptible);
+            instanceConfiguration.setMaxRunDurationSeconds(this.maxRunDurationSeconds);
             instanceConfiguration.setMinCpuPlatform(this.minCpuPlatform);
             instanceConfiguration.setLabelString(this.labels);
             instanceConfiguration.setRunAsUser(this.runAsUser);
