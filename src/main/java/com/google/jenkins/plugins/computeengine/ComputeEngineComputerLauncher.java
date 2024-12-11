@@ -232,6 +232,8 @@ public abstract class ComputeEngineComputerLauncher extends ComputerLauncher {
             } catch (Exception e) {
                 listener.error(String.format("Failed to terminate node %s", node.getDisplayName()));
             }
+        } else {
+            LOGGER.fine(String.format("Tried to terminate unknown node from computer %s", node.getNodeName()));
         }
     }
 
