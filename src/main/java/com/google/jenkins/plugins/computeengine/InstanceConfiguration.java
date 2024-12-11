@@ -822,7 +822,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         }
 
         public FormValidation doCheckMaxRunDurationSeconds(
-                @QueryParameter String value, @QueryParameter(value="provisioningType") String provisioningTypeIdx) {
+                @QueryParameter String value, @QueryParameter(value = "provisioningType") String provisioningTypeIdx) {
             try {
                 long maxRunDurationSeconds = Long.parseLong(value);
                 if (maxRunDurationSeconds < 0) {
@@ -834,7 +834,8 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
                             .get(Integer.parseInt(provisioningTypeIdx))
                             .getProvisioningTypeValue();
                     if (provisioningTypeValue == PREEMPTIBLE) {
-                        return FormValidation.warning("Max run duration is not supported for preemptible VMs and will be ignored.");
+                        return FormValidation.warning(
+                                "Max run duration is not supported for preemptible VMs and will be ignored.");
                     }
                 }
 
