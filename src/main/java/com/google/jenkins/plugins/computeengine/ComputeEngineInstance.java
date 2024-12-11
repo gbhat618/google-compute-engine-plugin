@@ -134,8 +134,16 @@ public class ComputeEngineInstance extends AbstractCloudSlave {
                         .createSnapshotSync(cloud.getProjectId(), this.zone, this.getNodeName(), createSnapshotTimeout);
             }
 
+            Map<String, String> filterLabel = ImmutableMap.of(CLOUD_ID_LABEL_KEY, cloud.getInstanceId());
+            var instanceExistsInCloud =
+                    cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), filterLabel).stream()
+                            .anyMatch(instance -> instance.getName().equals(name));
+
+            // If the instance exists in the cloud, attempt to terminate it. This is an async call and we
             // return immediately, hoping for the best.
-            cloud.getClient().terminateInstanceAsync(cloud.getProjectId(), zone, name);
+            if (instanceExistsInCloud) {
+                cloud.getClient().terminateInstanceAsync(cloud.getProjectId(), zone, name);
+            }
         } catch (CloudNotFoundException cnfe) {
             listener.error(cnfe.getMessage());
         } catch (OperationException oe) {
