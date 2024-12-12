@@ -19,9 +19,9 @@ package com.google.jenkins.plugins.computeengine.ui.helpers;
 import hudson.util.FormValidation;
 import org.kohsuke.stapler.QueryParameter;
 
-public class Utils {
+class Utils {
 
-    public static FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
+    static FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
         try {
             long maxRunDurationSeconds = Long.parseLong(value);
             if (maxRunDurationSeconds < 0) {
