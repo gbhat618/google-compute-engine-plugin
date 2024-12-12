@@ -16,23 +16,25 @@ limitations under the License.
 
 <div>
     GCP offers three VM provisioning options, each with different availability, pricing, and termination policies.
-    The "<code>Max Run Duration Seconds</code>" field below applies to all three types.
     <ul>
         <li>
             <strong>Standard:</strong> Stable provisioning model with guaranteed availability by GCP SLAs.
             Higher pricing compared to Spot and Preemptible VMs.
+            Use the "<code>Max Run Duration Seconds</code>" field to limit the instance duration and enable automatic deletion.
         </li>
         <li>
             <strong>Spot:</strong> Low-cost instances that may be terminated if resources are needed elsewhere. Availability varies.
-            Unlike Preemptible VMs, they are not always terminated after 24 hours. Spot and Preemptible VMs are priced the same.
-            Set the "<code>Max Run Duration Seconds</code>" field below to ensure termination after a specific duration.
+            Unlike Preemptible VMs, they are not always terminated after 24 hours.
+            Spot and Preemptible VMs are priced the same.
+            Use the "<code>Max Run Duration Seconds</code>" field to ensure termination after a specific duration.
             <p>
                 See <a href="https://cloud.google.com/compute/docs/instances/spot">Spot VMs</a> for more details.
             </p>
         </li>
         <li>
             <strong>Preemptible:</strong> Low-cost instances that may be terminated if resources are needed for other tasks.
-            Availability varies with usage. Spot and Preemptible VMs are priced the same.
+            Availability varies. Spot and Preemptible VMs are priced the same.
+            The "<code>Max Run Duration Seconds</code>" field does not apply to Preemptible instances.
             <p>
                 See the <a href="https://cloud.google.com/compute/docs/instances/preemptible">Preemptible VM Instances</a> documentation for more information.
             </p>

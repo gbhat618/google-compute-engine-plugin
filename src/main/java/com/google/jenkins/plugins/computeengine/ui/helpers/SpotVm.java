@@ -17,14 +17,28 @@
 package com.google.jenkins.plugins.computeengine.ui.helpers;
 
 import hudson.Extension;
+import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 
 @SuppressWarnings("unused")
 public class SpotVm extends ProvisioningType {
 
+    @DataBoundSetter
+    private long maxRunDurationSeconds;
+
     @DataBoundConstructor
     public SpotVm() {
         super(ProvisioningTypeValue.SPOT);
+    }
+
+    public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {
+        this.maxRunDurationSeconds = maxRunDurationSeconds;
+    }
+
+    public long getMaxRunDurationSeconds() {
+        return maxRunDurationSeconds;
     }
 
     @Extension
@@ -34,9 +48,8 @@ public class SpotVm extends ProvisioningType {
             return "Spot VM";
         }
 
-        @Override
-        public ProvisioningTypeValue getProvisioningTypeValue() {
-            return ProvisioningTypeValue.SPOT;
+        public FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
+            return Utils.doCheckMaxRunDurationSeconds(value);
         }
     }
 }

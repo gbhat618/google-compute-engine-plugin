@@ -17,14 +17,28 @@
 package com.google.jenkins.plugins.computeengine.ui.helpers;
 
 import hudson.Extension;
+import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 
 @SuppressWarnings("unused")
 public class Standard extends ProvisioningType {
 
+    @DataBoundSetter
+    private long maxRunDurationSeconds;
+
     @DataBoundConstructor
     public Standard() {
         super(ProvisioningTypeValue.STANDARD);
+    }
+
+    public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {
+        this.maxRunDurationSeconds = maxRunDurationSeconds;
+    }
+
+    public long getMaxRunDurationSeconds() {
+        return maxRunDurationSeconds;
     }
 
     @Extension
@@ -34,9 +48,8 @@ public class Standard extends ProvisioningType {
             return "Standard";
         }
 
-        @Override
-        public ProvisioningTypeValue getProvisioningTypeValue() {
-            return ProvisioningTypeValue.STANDARD;
+        public FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
+            return Utils.doCheckMaxRunDurationSeconds(value);
         }
     }
 }

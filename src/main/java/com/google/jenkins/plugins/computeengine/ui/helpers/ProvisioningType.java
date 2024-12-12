@@ -34,12 +34,11 @@ public abstract class ProvisioningType extends AbstractDescribableImpl<Provision
         return value;
     }
 
+    @SuppressWarnings("unused")
     @DataBoundSetter
     public void setProvisioningTypeValue(ProvisioningTypeValue value) {
         this.value = value;
     }
 
-    public abstract static class ProvisioningTypeDescriptor extends Descriptor<ProvisioningType> {
-        public abstract ProvisioningTypeValue getProvisioningTypeValue();
-    }
+    public abstract static class ProvisioningTypeDescriptor extends Descriptor<ProvisioningType> {}
 }

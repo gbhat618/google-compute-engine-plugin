@@ -47,6 +47,8 @@ import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyPair;
 import com.google.jenkins.plugins.computeengine.ssh.GooglePrivateKey;
 import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningType;
 import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
+import com.google.jenkins.plugins.computeengine.ui.helpers.SpotVm;
+import com.google.jenkins.plugins.computeengine.ui.helpers.Standard;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
@@ -68,7 +70,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.logging.Level;
@@ -126,19 +127,15 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     private String machineType;
     private String numExecutorsStr;
     private String startupScript;
-
     /**
-     * Use the {@link #provisioningType} field instead.
+     * `preemptible` is no more exposed in the UI, however we are still keeping it in here, just to provide
+     * compatibility with old configurations. Use the {@link #provisioningType} field instead where
+     * {@link com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm} is used for preemptible instances.
      */
     @Deprecated
     private boolean preemptible;
 
-    /**
-     * Succeeds {@link #preemptible}.
-     */
     private ProvisioningType provisioningType;
-
-    private long maxRunDurationSeconds;
     private String minCpuPlatform;
     private String labels;
     private String runAsUser;
@@ -512,26 +509,29 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
     private Scheduling scheduling() {
         Scheduling scheduling = new Scheduling();
-
+        long maxRunDurationSeconds = 0;
         if (provisioningType != null) {
-            if (provisioningType.getValue() == PREEMPTIBLE) {
+            ProvisioningTypeValue ptValue = provisioningType.getValue();
+            if (ptValue == PREEMPTIBLE) {
                 scheduling.setPreemptible(true);
             } else if (provisioningType.getValue() == SPOT) {
+                maxRunDurationSeconds = ((SpotVm) provisioningType).getMaxRunDurationSeconds();
                 scheduling.setProvisioningModel("SPOT");
+                // only the instance is deleted, the disk deletion is based on bootDiskAutoDelete config value
+                scheduling.setInstanceTerminationAction("DELETE");
+            } else {
+                maxRunDurationSeconds = ((Standard) provisioningType).getMaxRunDurationSeconds();
+            }
+            if (maxRunDurationSeconds > 0) {
+                GenericJson j = new GenericJson();
+                j.set("seconds", maxRunDurationSeconds);
+                scheduling.set("maxRunDuration", j);
                 // only the instance is deleted, the disk deletion is based on bootDiskAutoDelete config value
                 scheduling.setInstanceTerminationAction("DELETE");
             }
         } else if (preemptible) { // keeping the check for `preemptible` for backward compatibility
             scheduling.setPreemptible(true);
         } // else: standard provisioning
-
-        if (maxRunDurationSeconds > 0 && provisioningType.getValue() != PREEMPTIBLE) {
-            GenericJson j = new GenericJson();
-            j.set("seconds", maxRunDurationSeconds);
-            scheduling.set("maxRunDuration", j);
-            // only the instance is deleted, the disk deletion is based on bootDiskAutoDelete config value
-            scheduling.setInstanceTerminationAction("DELETE");
-        }
         return scheduling;
     }
 
@@ -821,28 +821,9 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             return FormValidation.ok();
         }
 
-        public FormValidation doCheckMaxRunDurationSeconds(
-                @QueryParameter String value, @QueryParameter(value = "provisioningType") String provisioningTypeIdx) {
-            try {
-                long maxRunDurationSeconds = Long.parseLong(value);
-                if (maxRunDurationSeconds < 0) {
-                    return FormValidation.error("Max run duration must be greater than or equal to 0");
-                }
-
-                if (StringUtils.isNotBlank(provisioningTypeIdx)) {
-                    ProvisioningTypeValue provisioningTypeValue = provisioningTypeDescriptors
-                            .get(Integer.parseInt(provisioningTypeIdx))
-                            .getProvisioningTypeValue();
-                    if (provisioningTypeValue == PREEMPTIBLE) {
-                        return FormValidation.warning(
-                                "Max run duration is not supported for preemptible VMs and will be ignored.");
-                    }
-                }
-
-                return FormValidation.ok();
-            } catch (NumberFormatException e) {
-                return FormValidation.error("Max run duration must be non-negative number");
-            }
+        @SuppressWarnings("unused")
+        public ProvisioningType defualtProvisioningType() {
+            return new Standard();
         }
 
         public ListBoxModel doFillMinCpuPlatformItems(
@@ -1007,11 +988,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
         @SuppressWarnings("unused")
         public List<ProvisioningType.ProvisioningTypeDescriptor> getProvisioningTypes() {
-            if (provisioningTypeDescriptors == null) {
-                provisioningTypeDescriptors =
-                        Objects.requireNonNull(Jenkins.getInstanceOrNull()).getDescriptorList(ProvisioningType.class);
-            }
-            return provisioningTypeDescriptors;
+            return ExtensionList.lookup(ProvisioningType.ProvisioningTypeDescriptor.class);
         }
 
         public List<NetworkInterfaceIpStackMode.Descriptor> getNetworkInterfaceIpStackModeDescriptors() {
@@ -1029,10 +1006,8 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             instanceConfiguration.setMachineType(this.machineType);
             instanceConfiguration.setNumExecutorsStr(this.numExecutorsStr);
             instanceConfiguration.setStartupScript(this.startupScript);
-            instanceConfiguration.setPreemptible(this.preemptible);
-            instanceConfiguration.setProvisioningType(this.provisioningType);
-            instanceConfiguration.setMaxRunDurationSeconds(this.maxRunDurationSeconds);
             instanceConfiguration.setMinCpuPlatform(this.minCpuPlatform);
+            instanceConfiguration.setProvisioningType(this.provisioningType);
             instanceConfiguration.setLabelString(this.labels);
             instanceConfiguration.setRunAsUser(this.runAsUser);
             instanceConfiguration.setWindowsConfiguration(this.windowsConfiguration);

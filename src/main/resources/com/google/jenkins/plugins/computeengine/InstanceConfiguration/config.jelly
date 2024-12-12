@@ -86,15 +86,13 @@
             </f:entry>
             
             <f:advanced>
+                <f:dropdownDescriptorSelector
+                        title="Provisioning Type"
+                        field="provisioningType"
+                        descriptors="${descriptor.provisioningTypes}"
+                        default="${descriptor.defaultProvisioningType()}"/>
                 <f:entry field="machineType" title="${%Machine Type}">
                     <f:select/>
-                </f:entry>
-                <f:descriptorRadioList descriptors="${descriptor.provisioningTypes}"
-                                       title="Provisioning Type"
-                                       instance="${instance}"
-                                       varName="provisioningType"/>
-                <f:entry field="maxRunDurationSeconds" title="${%Max Run Duration Seconds}">
-                    <f:textbox/>
                 </f:entry>
                 <f:entry field="minCpuPlatform" title="${%Minimum Cpu Platform}">
                     <f:select/>

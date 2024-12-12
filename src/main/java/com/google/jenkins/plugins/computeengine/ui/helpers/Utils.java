@@ -16,22 +16,20 @@
 
 package com.google.jenkins.plugins.computeengine.ui.helpers;
 
-import hudson.Extension;
-import org.kohsuke.stapler.DataBoundConstructor;
+import hudson.util.FormValidation;
+import org.kohsuke.stapler.QueryParameter;
 
-@SuppressWarnings("unused")
-public class PreemptibleVm extends ProvisioningType {
+public class Utils {
 
-    @DataBoundConstructor
-    public PreemptibleVm() {
-        super(ProvisioningTypeValue.PREEMPTIBLE);
-    }
-
-    @Extension
-    public static class DescriptorImpl extends ProvisioningTypeDescriptor {
-        @Override
-        public String getDisplayName() {
-            return "Preemptible VM";
+    public static FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
+        try {
+            long maxRunDurationSeconds = Long.parseLong(value);
+            if (maxRunDurationSeconds < 0) {
+                return FormValidation.error("Max run duration must be greater than or equal to 0");
+            }
+            return FormValidation.ok();
+        } catch (NumberFormatException e) {
+            return FormValidation.error("Max run duration must be non-negative number");
         }
     }
 }
