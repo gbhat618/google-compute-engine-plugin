@@ -16,6 +16,7 @@
 
 package com.google.jenkins.plugins.computeengine;
 
+import com.google.api.client.googleapis.json.GoogleJsonResponseException;
 import com.google.api.services.compute.model.AccessConfig;
 import com.google.api.services.compute.model.Instance;
 import com.google.api.services.compute.model.NetworkInterface;
@@ -40,6 +41,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.net.InetSocketAddress;
 import java.net.Proxy;
+import java.net.SocketTimeoutException;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.logging.Level;
@@ -154,14 +156,16 @@ public abstract class ComputeEngineComputerLauncher extends ComputerLauncher {
             }
             if (opError != null) {
                 LOGGER.info(String.format(
-                        "Launch failed while waiting for operation %s to complete. Operation error was %s",
+                        "Launch failed while waiting for operation %s to complete. Operation error was %s. Terminating instance.",
                         insertOperationId, opError.getErrors().get(0).getMessage()));
+                terminateNode(computer, listener);
                 return;
             }
         } catch (InterruptedException e) {
             LOGGER.info(String.format(
-                    "Launch failed while waiting for operation %s to complete. Operation error was %s",
+                    "Launch failed while waiting for operation %s to complete. Operation error was %s. Terminating instance",
                     insertOperationId, opError.getErrors().get(0).getMessage()));
+            terminateNode(computer, listener);
             return;
         }
 
@@ -214,16 +218,23 @@ public abstract class ComputeEngineComputerLauncher extends ComputerLauncher {
             launch(computer, listener);
         } catch (IOException ioe) {
             ioe.printStackTrace(listener.error(ioe.getMessage()));
-            node = (ComputeEngineInstance) slaveComputer.getNode();
-            if (node != null) {
-                try {
-                    node.terminate();
-                } catch (Exception e) {
-                    listener.error(String.format("Failed to terminate node %s", node.getDisplayName()));
-                }
-            }
+            terminateNode(slaveComputer, listener);
         } catch (InterruptedException ie) {
 
+        }
+    }
+
+    private static void terminateNode(SlaveComputer slaveComputer, TaskListener listener) {
+        ComputeEngineInstance node = (ComputeEngineInstance) slaveComputer.getNode();
+        if (node != null) {
+            try {
+                node.terminate();
+            } catch (Exception e) {
+                listener.error(String.format("Failed to terminate node %s", node.getDisplayName()));
+            }
+        } else {
+            LOGGER.fine(
+                    String.format("Tried to terminate unknown node from computer %s", slaveComputer.getDisplayName()));
         }
     }
 
@@ -343,6 +354,10 @@ public abstract class ComputeEngineComputerLauncher extends ComputerLauncher {
                             + ")");
                 }
                 Instance instance = computer.refreshInstance();
+                // the instance will be null when the node is terminated
+                if (instance == null) {
+                    return null;
+                }
 
                 String host = "";
 
@@ -410,10 +425,25 @@ public abstract class ComputeEngineComputerLauncher extends ComputerLauncher {
                         SSH_TIMEOUT_MILLIS);
                 logInfo(computer, listener, "Connected via SSH.");
                 return conn;
-            } catch (IOException e) {
+            } catch (GoogleJsonResponseException e) {
+                if (e.getStatusCode() == 404) {
+                    log(
+                            LOGGER,
+                            Level.SEVERE,
+                            listener,
+                            String.format("Instance %s not found. Terminating instance.", computer.getName()));
+                    terminateNode(computer, listener);
+                }
+            } catch (SocketTimeoutException e) {
                 // keep retrying until SSH comes up
-                logInfo(computer, listener, "Failed to connect via ssh: " + e.getMessage());
-                logInfo(computer, listener, "Waiting for SSH to come up. Sleeping 5.");
+                logInfo(computer, listener, String.format("Failed to connect via ssh: %s", e.getMessage()));
+                logInfo(
+                        computer,
+                        listener,
+                        String.format("Waiting for SSH to come up. Sleeping %d.", SSH_SLEEP_MILLIS / 1000));
+                Thread.sleep(SSH_SLEEP_MILLIS);
+            } catch (IOException e) {
+                logWarning(computer, listener, String.format("An error occured: %s", e.getMessage()));
                 Thread.sleep(SSH_SLEEP_MILLIS);
             }
         }
