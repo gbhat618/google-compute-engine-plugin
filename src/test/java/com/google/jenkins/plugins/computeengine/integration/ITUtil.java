@@ -111,12 +111,13 @@ class ITUtil {
     private static final String CONFIG_DESC = "integration";
     private static final String BOOT_DISK_TYPE = ZONE_BASE + "/diskTypes/pd-ssd";
     private static final boolean BOOT_DISK_AUTODELETE = true;
-    private static final String BOOT_DISK_PROJECT_ID =
-            windows ? System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID") : "debian-cloud";
-    private static final String BOOT_DISK_IMAGE_NAME = windows
+    private static final String BOOT_DISK_PROJECT_ID = System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID") != null
+            ? System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID")
+            : "debian" + "-cloud";
+    private static final String BOOT_DISK_IMAGE_NAME = System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME") != null
             ? String.format(
                     "projects/%s/global/images/%s", BOOT_DISK_PROJECT_ID, System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME"))
-            : "projects/debian-cloud/global/images/family/debian-9";
+            : "projects/debian-cloud/global/images/family/debian-12";
     private static final String BOOT_DISK_SIZE_GB_STR = windows ? "50" : "10";
     private static final Node.Mode NODE_MODE = Node.Mode.EXCLUSIVE;
     private static final String ACCELERATOR_NAME = "";

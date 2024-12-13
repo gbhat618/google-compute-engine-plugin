@@ -510,15 +510,13 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     private Scheduling scheduling() {
         Scheduling scheduling = new Scheduling();
         long maxRunDurationSeconds = 0;
-        if (provisioningType != null) {
+        if (provisioningType != null) { // check `null` for backward compatibility
             ProvisioningTypeValue ptValue = provisioningType.getValue();
             if (ptValue == PREEMPTIBLE) {
                 scheduling.setPreemptible(true);
             } else if (provisioningType.getValue() == SPOT) {
                 maxRunDurationSeconds = ((SpotVm) provisioningType).getMaxRunDurationSeconds();
                 scheduling.setProvisioningModel("SPOT");
-                // only the instance is deleted, the disk deletion is based on bootDiskAutoDelete config value
-                scheduling.setInstanceTerminationAction("DELETE");
             } else {
                 maxRunDurationSeconds = ((Standard) provisioningType).getMaxRunDurationSeconds();
             }
@@ -526,7 +524,13 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
                 GenericJson j = new GenericJson();
                 j.set("seconds", maxRunDurationSeconds);
                 scheduling.set("maxRunDuration", j);
-                // only the instance is deleted, the disk deletion is based on bootDiskAutoDelete config value
+                /* Note: Only the instance is set to delete here, not the disk. Disk deletion is based on the
+                  `bootDiskAutoDelete` config value. For instance termination at `maxRunDuration`, GCP supports two
+                  termination actions: DELETE and STOP.
+                  For Jenkins agents, DELETE is more appropriate. If the agent instance is needed again, it can be
+                  recreated using the disk, which should have been anticipated and disk should be set to not delete in
+                  `bootDiskAutoDelete`.
+                */
                 scheduling.setInstanceTerminationAction("DELETE");
             }
         } else if (preemptible) { // keeping the check for `preemptible` for backward compatibility
@@ -1007,6 +1011,8 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             instanceConfiguration.setNumExecutorsStr(this.numExecutorsStr);
             instanceConfiguration.setStartupScript(this.startupScript);
             instanceConfiguration.setMinCpuPlatform(this.minCpuPlatform);
+            // even though `preemptible` is deprecated, we still set it here for backward compatibility
+            instanceConfiguration.setPreemptible(this.preemptible);
             instanceConfiguration.setProvisioningType(this.provisioningType);
             instanceConfiguration.setLabelString(this.labels);
             instanceConfiguration.setRunAsUser(this.runAsUser);
