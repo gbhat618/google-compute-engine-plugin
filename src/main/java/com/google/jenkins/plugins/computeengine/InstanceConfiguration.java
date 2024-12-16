@@ -132,8 +132,8 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
      * `preemptible` is no more exposed in the UI, however we are still keeping it in here, just to provide
      * compatibility with old configurations. Use the {@link #provisioningType} field instead where
      * {@link com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm} is used for preemptible instances.
+     * We are not marking it as {@code @Deprecated} because then CasC will result in ConfiguratorException.
      */
-    @Deprecated
     private boolean preemptible;
 
     private ProvisioningType provisioningType;
