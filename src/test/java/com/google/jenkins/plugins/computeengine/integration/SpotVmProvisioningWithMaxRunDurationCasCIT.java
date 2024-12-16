@@ -25,9 +25,9 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCl
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCloud;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCredentials;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.windows;
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeFalse;
 
 import com.google.api.client.util.ArrayMap;
@@ -50,48 +50,65 @@ import java.util.Objects;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.java.Log;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 
 @Log
-public class MaxRunDurationCasCIT {
+public class SpotVmProvisioningWithMaxRunDurationCasCIT {
 
-    @ClassRule
-    public static Timeout timeout = new Timeout(20, TimeUnit.MINUTES);
+    // Increase the timeout from default 180s to 10minutes.
+    static {
+        System.setProperty("jenkins.test.timeout", "600");
+    }
 
     @ClassRule
     public static JenkinsRule j = new JenkinsRule();
 
     private static ComputeClient client;
-    private static ComputeEngineCloud cloud;
-    private static Map<String, String> label = getLabel(MaxRunDurationCasCIT.class);
+    private static final Map<String, String> vmLabels = getLabel(SpotVmProvisioningWithMaxRunDurationCasCIT.class);
 
     @BeforeClass
     public static void init() throws Exception {
         assumeFalse(windows);
         log.info("init");
         initCredentials(j);
-        cloud = initCloud(j);
-        client = initClient(j, label, log);
+        initCloud(j);
+        client = initClient(j, vmLabels, log);
     }
 
+    /**
+     * Ensures that an agent VM is provisioned for the first build (freestyle), and waits for the VM to be removed due to `maxRunDuration`.
+     * Then schedules another build (pipeline), resulting in a new agent VM creation and success.
+     * <p>
+     * This test verifies that VM deletion on GCP does occur for `maxRunDuration` setting, and Jenkins agent is not
+     * going to be in a wrong state, but gets deleted as well.
+     * <p>
+     * It covers both freestyle and pipeline builds.
+     */
     @Test
     public void testMaxRunDurationDeletesAndNoNewBuilds() throws Exception {
         assumeFalse(windows);
         ConfigurationAsCode.get()
-                .configure(Objects.requireNonNull(this.getClass().getResource("casc-max-run-duration-agent-it.yml"))
+                .configure(Objects.requireNonNull(
+                                this.getClass().getResource("spot-vm-provisioning-with-max-run-duration-casc.yml"))
                         .toString());
+
+        // verify no nodes to start with.
+        assertEquals(0, j.jenkins.getNodes().size());
+
         ComputeEngineCloud cloud = (ComputeEngineCloud) j.jenkins.clouds.getByName("gce-integration");
-        cloud.getConfigurations().get(0).setGoogleLabels(label);
+        cloud.getConfigurations().get(0).setGoogleLabels(vmLabels);
         Collection<PlannedNode> planned = cloud.provision(new LabelAtom(LABEL), 1);
         planned.iterator().next().future.get(); // wait for the node creation to finish
         Instance instance =
                 client.getInstance(PROJECT_ID, ZONE, planned.iterator().next().displayName);
         String instanceName = instance.getName();
         log.info("Instance: " + instance.getName());
+        assertEquals(1, j.jenkins.getNodes().size());
 
         // assert the scheduling configurations.
         Scheduling sch = instance.getScheduling();
@@ -100,7 +117,7 @@ public class MaxRunDurationCasCIT {
         assertEquals(180, Integer.parseInt((String) ((ArrayMap) sch.get("maxRunDuration")).get("seconds")));
         log.info("instance scheduling configs are correct");
 
-        // try to execute a build on the agent
+        // try to execute a build on the agent (freestyle type)
         FreeStyleProject fp = j.createFreeStyleProject();
         Builder step = execute(Commands.ECHO, "hello world");
         fp.getBuildersList().add(step);
@@ -108,34 +125,36 @@ public class MaxRunDurationCasCIT {
         Future<FreeStyleBuild> buildFuture = fp.scheduleBuild2(0);
         FreeStyleBuild build = buildFuture.get();
         assertEquals(Result.SUCCESS, build.getResult());
-        String agent1 = printLogsAndReturnAgentName(build);
-        log.info("first build completed");
+        String agent1 = printLogsAndReturnAgentName(build.getLog(50));
+        log.info("first build completed on" + agent1);
         assertEquals(agent1, instanceName);
 
-        // wait for 3 minutes to make sure the instance is fully deleted due to `maxRunDuration`
-        log.info("sleeping 180s to make sure the instance is deleted");
-        TimeUnit.SECONDS.sleep(180);
-        log.info("sleeping completed");
+        // wait for the agent to be removed due to maxRunDuration; retention time is far more 30 minutes - so the
+        // deletion should be due to maxRunDuration.
+        await("Jenkins agent to be removed due to maxRunDuration well before the retention time")
+                .atMost(180, TimeUnit.SECONDS)
+                .until(() -> j.jenkins.getNodes().isEmpty());
+        await("GCP VM deletion to complete due to maxRunDuration")
+                .atMost(180, TimeUnit.SECONDS)
+                .until(() -> client.listInstancesWithLabel(PROJECT_ID, vmLabels).isEmpty());
 
-        // assert there are no nodes remaining;
-        assertTrue(client.listInstancesWithLabel(PROJECT_ID, label).isEmpty());
-
-        // trigger another build, notice a new instance is being created
+        // trigger another build, notice a new instance is being created (pipeline type)
         log.info("proceeding to 2nd build, after no remaining instances");
-        buildFuture = fp.scheduleBuild2(0);
-        build = buildFuture.get();
-        String agent2 = printLogsAndReturnAgentName(build);
-        log.info("second build completed");
-
+        var p = j.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node('" + LABEL + "') { sh 'date' }", true));
+        var run = j.assertBuildStatus(Result.SUCCESS, p.scheduleBuild2(0).get());
+        String agent2 = printLogsAndReturnAgentName(run.getLog(50));
+        log.info("second build completed on " + agent2);
         assertNotEquals(agent1, agent2);
     }
 
-    private static String printLogsAndReturnAgentName(FreeStyleBuild build) throws IOException {
-        List<String> logs = build.getLog(50);
+    private static String printLogsAndReturnAgentName(List<String> logs) throws IOException {
         String agentName = null;
         for (String line : logs) {
             if (line.contains("Building remotely on")) {
                 agentName = line.split(" ")[3];
+            } else if (line.contains("Running on")) {
+                agentName = line.split(" ")[2];
             }
             log.info(line);
         }

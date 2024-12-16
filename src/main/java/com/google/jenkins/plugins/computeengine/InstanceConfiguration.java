@@ -40,6 +40,7 @@ import com.google.api.services.compute.model.Tags;
 import com.google.api.services.compute.model.Zone;
 import com.google.cloud.graphite.platforms.plugin.client.ClientFactory;
 import com.google.cloud.graphite.platforms.plugin.client.ComputeClient;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.google.jenkins.plugins.computeengine.client.ClientUtil;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyCredential;
@@ -507,7 +508,8 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         return null;
     }
 
-    private Scheduling scheduling() {
+    @VisibleForTesting
+    Scheduling scheduling() {
         Scheduling scheduling = new Scheduling();
         long maxRunDurationSeconds = 0;
         if (provisioningType != null) { // check `null` for backward compatibility

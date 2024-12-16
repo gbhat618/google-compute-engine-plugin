@@ -9,7 +9,7 @@ jenkins:
           - namePrefix:         max-run-duration
             description:        max-run-duration
             launchTimeoutSecondsStr: ''
-            retentionTimeMinutesStr: ''
+            retentionTimeMinutesStr: "30"
             mode:               EXCLUSIVE
             labelString:        integration
             numExecutorsStr:    1
