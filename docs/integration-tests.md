@@ -37,7 +37,7 @@
     # For creating image, you need to first stop the VM
     gcloud compute instances stop java-install-instance \
 	--project=$project \
-    --zone=$zone \
+    --zone=$zone
     
     # Create an image from the VM
     gcloud compute images create java-debian-12-image \
