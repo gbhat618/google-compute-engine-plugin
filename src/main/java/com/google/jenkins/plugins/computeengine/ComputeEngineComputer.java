@@ -44,7 +44,7 @@ public class ComputeEngineComputer extends AbstractCloudComputer<ComputeEngineIn
         ComputeEngineInstance node = getNode();
         if (node != null) {
             node.onConnected();
-            if (getPreemptible()) { // TODO: maybe need to handle similarly when `maxRunDuration` is set.
+            if (getPreemptible()) {
                 String nodeName = node.getNodeName();
                 final String msg = "Instance " + nodeName + " is preemptive, setting up preemption listener";
                 log.log(Level.INFO, msg);
