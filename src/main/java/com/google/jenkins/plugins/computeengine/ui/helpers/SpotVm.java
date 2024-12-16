@@ -25,7 +25,6 @@ import org.kohsuke.stapler.QueryParameter;
 @SuppressWarnings("unused")
 public class SpotVm extends ProvisioningType {
 
-    @DataBoundSetter
     private long maxRunDurationSeconds;
 
     @DataBoundConstructor
@@ -33,6 +32,7 @@ public class SpotVm extends ProvisioningType {
         super(ProvisioningTypeValue.SPOT);
     }
 
+    @DataBoundSetter
     public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {
         this.maxRunDurationSeconds = maxRunDurationSeconds;
     }

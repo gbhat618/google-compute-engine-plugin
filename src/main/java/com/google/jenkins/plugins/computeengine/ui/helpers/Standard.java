@@ -25,7 +25,6 @@ import org.kohsuke.stapler.QueryParameter;
 @SuppressWarnings("unused")
 public class Standard extends ProvisioningType {
 
-    @DataBoundSetter
     private long maxRunDurationSeconds;
 
     @DataBoundConstructor
@@ -33,6 +32,7 @@ public class Standard extends ProvisioningType {
         super(ProvisioningTypeValue.STANDARD);
     }
 
+    @DataBoundSetter
     public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {
         this.maxRunDurationSeconds = maxRunDurationSeconds;
     }

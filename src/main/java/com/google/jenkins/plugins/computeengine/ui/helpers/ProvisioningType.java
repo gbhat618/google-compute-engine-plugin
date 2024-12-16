@@ -24,7 +24,8 @@ import org.kohsuke.stapler.DataBoundSetter;
  * ProvisioningType represents the type of VM to be provisioned.
  */
 public abstract class ProvisioningType extends AbstractDescribableImpl<ProvisioningType> {
-    public ProvisioningTypeValue value;
+
+    private ProvisioningTypeValue value;
 
     public ProvisioningType(ProvisioningTypeValue value) {
         this.value = value;
