@@ -597,7 +597,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     @Extension
     public static final class DescriptorImpl extends Descriptor<InstanceConfiguration> {
         private static ComputeClient computeClient;
-        private static List<ProvisioningType.ProvisioningTypeDescriptor> provisioningTypeDescriptors;
 
         public static void setComputeClient(ComputeClient client) {
             computeClient = client;
