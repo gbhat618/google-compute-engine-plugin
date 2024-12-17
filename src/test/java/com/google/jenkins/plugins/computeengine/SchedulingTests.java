@@ -22,7 +22,9 @@ import static org.junit.Assert.assertTrue;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.compute.model.Scheduling;
+import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
 import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
+import com.google.jenkins.plugins.computeengine.ui.helpers.Standard;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -39,6 +41,12 @@ public class SchedulingTests {
         return cloud.getConfigurations().get(0).scheduling();
     }
 
+    private InstanceConfiguration getInstanceConfiguration() {
+        ComputeEngineCloud cloud = (ComputeEngineCloud) j.jenkins.clouds.getByName("gce-unit-tests");
+        assertEquals(1, cloud.getConfigurations().size());
+        return cloud.getConfigurations().get(0);
+    }
+
     /**
      * When the previously used {@code preemptible} configuration is loaded, there should be no error in initializing
      * of the new field {@code provisioningType} as well as with building effective `scheduling` configurations. No
@@ -49,6 +57,7 @@ public class SchedulingTests {
     public void testPreemptibleCompatibility() {
         Scheduling sch = getScheduling();
         assertTrue(sch.getPreemptible());
+        assertEquals(PreemptibleVm.class, getInstanceConfiguration().defaultProvisioningType().getClass());
         assertNull(sch.getProvisioningModel());
         assertNull(sch.get("maxRunDuration"));
         assertNull(sch.getInstanceTerminationAction());
@@ -66,6 +75,7 @@ public class SchedulingTests {
         assertNull(sch.getProvisioningModel());
         assertNull(sch.get("maxRunDuration"));
         assertNull(sch.getInstanceTerminationAction());
+        assertEquals(Standard.class, getInstanceConfiguration().defaultProvisioningType().getClass());
     }
 
     /**

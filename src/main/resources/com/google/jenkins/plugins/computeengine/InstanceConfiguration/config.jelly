@@ -90,7 +90,7 @@
                         title="Provisioning Type"
                         field="provisioningType"
                         descriptors="${descriptor.provisioningTypes}"
-                        default="${descriptor.defaultProvisioningType()}"/>
+                        default="${instance.defaultProvisioningType()}"/>
                 <f:entry field="machineType" title="${%Machine Type}">
                     <f:select/>
                 </f:entry>

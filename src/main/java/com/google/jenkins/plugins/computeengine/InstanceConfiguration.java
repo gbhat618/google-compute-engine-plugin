@@ -46,6 +46,7 @@ import com.google.jenkins.plugins.computeengine.client.ClientUtil;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyCredential;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyPair;
 import com.google.jenkins.plugins.computeengine.ssh.GooglePrivateKey;
+import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
 import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningType;
 import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
 import com.google.jenkins.plugins.computeengine.ui.helpers.SpotVm;
@@ -594,6 +595,11 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         }
     }
 
+    @SuppressWarnings("unused")
+    public ProvisioningType defaultProvisioningType() {
+        return this.preemptible ? new PreemptibleVm() : new Standard();
+    }
+
     @Extension
     public static final class DescriptorImpl extends Descriptor<InstanceConfiguration> {
         private static ComputeClient computeClient;
@@ -824,11 +830,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
                 return FormValidation.error("Please select a machine type...");
             }
             return FormValidation.ok();
-        }
-
-        @SuppressWarnings("unused")
-        public ProvisioningType defaultProvisioningType() {
-            return new Standard();
         }
 
         public ListBoxModel doFillMinCpuPlatformItems(
