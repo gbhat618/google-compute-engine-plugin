@@ -1011,10 +1011,10 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             instanceConfiguration.setMachineType(this.machineType);
             instanceConfiguration.setNumExecutorsStr(this.numExecutorsStr);
             instanceConfiguration.setStartupScript(this.startupScript);
-            instanceConfiguration.setMinCpuPlatform(this.minCpuPlatform);
             // even though `preemptible` is deprecated, we still set it here for backward compatibility
             instanceConfiguration.setPreemptible(this.preemptible);
             instanceConfiguration.setProvisioningType(this.provisioningType);
+            instanceConfiguration.setMinCpuPlatform(this.minCpuPlatform);
             instanceConfiguration.setLabelString(this.labels);
             instanceConfiguration.setRunAsUser(this.runAsUser);
             instanceConfiguration.setWindowsConfiguration(this.windowsConfiguration);
