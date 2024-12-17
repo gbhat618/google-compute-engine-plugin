@@ -57,7 +57,9 @@ public class SchedulingTests {
     public void testPreemptibleCompatibility() {
         Scheduling sch = getScheduling();
         assertTrue(sch.getPreemptible());
-        assertEquals(PreemptibleVm.class, getInstanceConfiguration().defaultProvisioningType().getClass());
+        assertEquals(
+                PreemptibleVm.class,
+                getInstanceConfiguration().defaultProvisioningType().getClass());
         assertNull(sch.getProvisioningModel());
         assertNull(sch.get("maxRunDuration"));
         assertNull(sch.getInstanceTerminationAction());
@@ -75,7 +77,9 @@ public class SchedulingTests {
         assertNull(sch.getProvisioningModel());
         assertNull(sch.get("maxRunDuration"));
         assertNull(sch.getInstanceTerminationAction());
-        assertEquals(Standard.class, getInstanceConfiguration().defaultProvisioningType().getClass());
+        assertEquals(
+                Standard.class,
+                getInstanceConfiguration().defaultProvisioningType().getClass());
     }
 
     /**
