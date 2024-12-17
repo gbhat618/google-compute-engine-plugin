@@ -827,7 +827,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         }
 
         @SuppressWarnings("unused")
-        public ProvisioningType defualtProvisioningType() {
+        public ProvisioningType defaultProvisioningType() {
             return new Standard();
         }
 
