@@ -61,6 +61,8 @@ import com.google.jenkins.plugins.computeengine.WindowsConfiguration;
 import com.google.jenkins.plugins.computeengine.client.ClientUtil;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyCredential;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyPair;
+import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
+import com.google.jenkins.plugins.computeengine.ui.helpers.Standard;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotPrivateKeyCredentials;
 import com.google.jenkins.plugins.credentials.oauth.JsonServiceAccountConfig;
 import hudson.model.Node;
@@ -297,7 +299,7 @@ class ITUtil {
                 .region(REGION)
                 .zone(ZONE)
                 .machineType(MACHINE_TYPE)
-                .preemptible(PREEMPTIBLE)
+                .provisioningType(PREEMPTIBLE ? new PreemptibleVm() : new Standard())
                 .minCpuPlatform(MIN_CPU_PLATFORM)
                 .description(CONFIG_DESC)
                 .bootDiskType(BOOT_DISK_TYPE)

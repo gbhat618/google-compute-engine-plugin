@@ -20,7 +20,6 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NULL_TEMPLATE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NUM_EXECUTORS;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
-import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.ZONE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.execute;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
@@ -39,6 +38,7 @@ import com.google.common.collect.Lists;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import com.google.jenkins.plugins.computeengine.ComputeEngineComputer;
 import com.google.jenkins.plugins.computeengine.InstanceConfiguration;
+import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
@@ -57,7 +57,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /**
@@ -66,8 +65,11 @@ import org.jvnet.hudson.test.JenkinsRule;
  */
 @Log
 public class ComputeEngineCloudRestartPreemptedIT {
-    @ClassRule
-    public static Timeout timeout = new Timeout(20 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+
+    // Increase the timeout from default 180s to 20minutes.
+    static {
+        System.setProperty("jenkins.test.timeout", "1200");
+    }
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -87,7 +89,7 @@ public class ComputeEngineCloudRestartPreemptedIT {
                 .numExecutorsStr(NUM_EXECUTORS)
                 .labels(LABEL)
                 .template(NULL_TEMPLATE)
-                .preemptible(true)
+                .provisioningType(new PreemptibleVm())
                 .googleLabels(label)
                 .oneShot(false)
                 .build();
@@ -131,5 +133,6 @@ public class ComputeEngineCloudRestartPreemptedIT {
         FreeStyleBuild nextBuild = freeStyleBuild.getNextBuild();
         Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> nextBuild.getResult() != null);
         assertEquals(SUCCESS, nextBuild.getResult());
+        log.info("Tests passed"); // sometimes there are IO connection errors logged afterwards so.
     }
 }
