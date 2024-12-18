@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
+import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotPrivateKeyCredentials;
 import hudson.model.Node;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
@@ -50,5 +51,17 @@ public class ConfigAsCodeTest {
         assertNotNull("Cloud by name not found", cloud);
         // Ensure correct exception is thrown
         assertThrows(GoogleRobotPrivateKeyCredentials.PrivateKeyNotSetException.class, cloud::getClient);
+    }
+
+    @Test
+    @ConfiguredWithCode("casc-preemptible-compatibility.yml")
+    public void provisioningTypeShouldBePreemptible() {
+        ComputeEngineCloud cloud = (ComputeEngineCloud) jenkinsRule.jenkins.clouds.getByName("gce-jenkins-build");
+        assertEquals("Zero configurations found", 1, cloud.getConfigurations().size());
+        InstanceConfiguration configuration = cloud.getConfigurations().get(0);
+        assertEquals(
+                "Provisioning type is wrong",
+                ProvisioningTypeValue.PREEMPTIBLE,
+                configuration.getProvisioningType().getValue());
     }
 }

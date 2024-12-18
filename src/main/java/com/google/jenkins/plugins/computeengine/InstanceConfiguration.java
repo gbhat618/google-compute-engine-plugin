@@ -19,9 +19,7 @@ package com.google.jenkins.plugins.computeengine;
 import static com.google.cloud.graphite.platforms.plugin.client.util.ClientUtil.nameFromSelfLink;
 import static com.google.jenkins.plugins.computeengine.ComputeEngineCloud.checkPermissions;
 import static com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue.PREEMPTIBLE;
-import static com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue.SPOT;
 
-import com.google.api.client.json.GenericJson;
 import com.google.api.services.compute.model.AcceleratorConfig;
 import com.google.api.services.compute.model.AttachedDisk;
 import com.google.api.services.compute.model.AttachedDiskInitializeParams;
@@ -48,8 +46,6 @@ import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyPair;
 import com.google.jenkins.plugins.computeengine.ssh.GooglePrivateKey;
 import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
 import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningType;
-import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
-import com.google.jenkins.plugins.computeengine.ui.helpers.SpotVm;
 import com.google.jenkins.plugins.computeengine.ui.helpers.Standard;
 import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -129,14 +125,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     private String machineType;
     private String numExecutorsStr;
     private String startupScript;
-    /**
-     * `preemptible` is no more exposed in the UI, however we are still keeping it in here, just to provide
-     * compatibility with old configurations. Use the {@link #provisioningType} field instead where
-     * {@link com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm} is used for preemptible instances.
-     * We are not marking it as {@code @Deprecated} because then CasC will result in ConfiguratorException.
-     */
-    private boolean preemptible;
-
     private ProvisioningType provisioningType;
     private String minCpuPlatform;
     private String labels;
@@ -183,6 +171,10 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     @Getter(AccessLevel.PROTECTED)
     @Setter(AccessLevel.PROTECTED)
     protected transient ComputeEngineCloud cloud;
+
+    /** @deprecated Use {@link #provisioningType} instead. */
+    @SuppressWarnings("DeprecatedIsStillUsed")
+    private transient boolean preemptible;
 
     private static List<Metadata.Items> mergeMetadataItems(List<Metadata.Items> winner, List<Metadata.Items> loser) {
         if (loser == null) {
@@ -253,6 +245,19 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         this.createSnapshot = createSnapshot && this.oneShot;
     }
 
+    /**
+     * Required for JCasC Compatibility,
+     * Without this setter explicitly defined, the {@code ConfigAsCodeTest} test fails as `preemptible` is deprecated.
+     * Also see,
+     * <a href="https://github.com/jenkinsci/configuration-as-code-plugin/blob/master/docs/REQUIREMENTS.md#rule-1-dont-write-code-for-data-binding"></a>
+     */
+    @DataBoundSetter
+    public void setPreemptible(boolean preemptible) {
+        if (preemptible) {
+            this.provisioningType = new PreemptibleVm();
+        }
+    }
+
     public static Integer intOrDefault(String toParse, Integer defaultTo) {
         Integer toReturn;
         try {
@@ -303,6 +308,13 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
     public int getLaunchTimeoutMillis() {
         return launchTimeoutSeconds * 1000;
+    }
+
+    /**
+     * This getter is only for backward compatibility for `preemptible` field.
+     */
+    public boolean getPreemptible() {
+        return provisioningType != null && provisioningType.getValue() == PREEMPTIBLE;
     }
 
     public void appendLabels(Map<String, String> labels) {
@@ -373,6 +385,10 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         if (externalAddress != null) {
             this.networkInterfaceIpStackMode = new NetworkInterfaceSingleStack(externalAddress);
             this.externalAddress = null;
+        }
+        /* deprecating `preemptible` in favor of extensible `provisioningType` */
+        if (preemptible && provisioningType == null) {
+            provisioningType = new PreemptibleVm();
         }
         return this;
     }
@@ -512,33 +528,10 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     @VisibleForTesting
     Scheduling scheduling() {
         Scheduling scheduling = new Scheduling();
-        long maxRunDurationSeconds = 0;
-        if (provisioningType != null) { // check `null` for backward compatibility
-            ProvisioningTypeValue ptValue = provisioningType.getValue();
-            if (ptValue == PREEMPTIBLE) {
-                scheduling.setPreemptible(true);
-            } else if (provisioningType.getValue() == SPOT) {
-                maxRunDurationSeconds = ((SpotVm) provisioningType).getMaxRunDurationSeconds();
-                scheduling.setProvisioningModel("SPOT");
-            } else {
-                maxRunDurationSeconds = ((Standard) provisioningType).getMaxRunDurationSeconds();
-            }
-            if (maxRunDurationSeconds > 0) {
-                GenericJson j = new GenericJson();
-                j.set("seconds", maxRunDurationSeconds);
-                scheduling.set("maxRunDuration", j);
-                /* Note: Only the instance is set to delete here, not the disk. Disk deletion is based on the
-                  `bootDiskAutoDelete` config value. For instance termination at `maxRunDuration`, GCP supports two
-                  termination actions: DELETE and STOP.
-                  For Jenkins agents, DELETE is more appropriate. If the agent instance is needed again, it can be
-                  recreated using the disk, which should have been anticipated and disk should be set to not delete in
-                  `bootDiskAutoDelete`.
-                */
-                scheduling.setInstanceTerminationAction("DELETE");
-            }
-        } else if (preemptible) { // keeping the check for `preemptible` for backward compatibility
-            scheduling.setPreemptible(true);
-        } // else: standard provisioning
+        if (provisioningType == null) {
+            return scheduling;
+        }
+        provisioningType.configure(scheduling);
         return scheduling;
     }
 
@@ -595,11 +588,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         }
     }
 
-    @SuppressWarnings("unused")
-    public ProvisioningType defaultProvisioningType() {
-        return this.preemptible ? new PreemptibleVm() : new Standard();
-    }
-
     @Extension
     public static final class DescriptorImpl extends Descriptor<InstanceConfiguration> {
         private static ComputeClient computeClient;
@@ -637,6 +625,11 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
         public static SshConfiguration defaultSshConfiguration() {
             return SshConfiguration.builder().customPrivateKeyCredentialsId("").build();
+        }
+
+        @SuppressWarnings("unused")
+        public ProvisioningType defaultProvisioningType() {
+            return new Standard();
         }
 
         public static NetworkConfiguration defaultNetworkConfiguration() {

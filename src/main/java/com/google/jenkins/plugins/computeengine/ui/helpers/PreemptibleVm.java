@@ -16,6 +16,7 @@
 
 package com.google.jenkins.plugins.computeengine.ui.helpers;
 
+import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -27,11 +28,21 @@ public class PreemptibleVm extends ProvisioningType {
         super(ProvisioningTypeValue.PREEMPTIBLE);
     }
 
+    @Override
+    public void configure(Scheduling scheduling) {
+        scheduling.setPreemptible(true);
+    }
+
     @Extension
     public static class DescriptorImpl extends ProvisioningTypeDescriptor {
         @Override
         public String getDisplayName() {
             return "Preemptible VM";
+        }
+
+        @Override
+        public boolean isMaxRunDurationSupported() {
+            return false;
         }
     }
 }

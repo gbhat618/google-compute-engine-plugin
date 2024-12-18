@@ -16,6 +16,7 @@
 
 package com.google.jenkins.plugins.computeengine.ui.helpers;
 
+import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
 import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -41,6 +42,11 @@ public class Standard extends ProvisioningType {
         return maxRunDurationSeconds;
     }
 
+    @Override
+    public void configure(Scheduling scheduling) {
+        super.configureMaxRunDuration(scheduling, maxRunDurationSeconds);
+    }
+
     @Extension
     public static class DescriptorImpl extends ProvisioningTypeDescriptor {
         @Override
@@ -50,6 +56,11 @@ public class Standard extends ProvisioningType {
 
         public FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
             return Utils.doCheckMaxRunDurationSeconds(value);
+        }
+
+        @Override
+        public boolean isMaxRunDurationSupported() {
+            return true;
         }
     }
 }

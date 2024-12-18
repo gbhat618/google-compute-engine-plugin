@@ -12,7 +12,7 @@
             <configurations>
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
                     <preemptible>false</preemptible>
-                    <provisioningType class="com.google.jenkins.plugins.computeengine.ui.helpers.SpotVm">
+                    <provisioningType class="com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm">
                         <value>PREEMPTIBLE</value>
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>
