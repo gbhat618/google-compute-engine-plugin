@@ -19,12 +19,19 @@ package com.google.jenkins.plugins.computeengine.ui.helpers;
 import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
 import hudson.util.FormValidation;
+import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
 public class SpotVm extends ProvisioningType {
 
     private long maxRunDurationSeconds;
+
+    // required for casc
+    @DataBoundConstructor
+    public SpotVm(long maxRunDurationSeconds) {
+        this.maxRunDurationSeconds = maxRunDurationSeconds;
+    }
 
     @SuppressWarnings("unused") // jelly
     @DataBoundSetter

@@ -608,7 +608,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
         @SuppressWarnings("unused") // jelly
         public ProvisioningType defaultProvisioningType() {
-            return new Standard();
+            return new Standard(0);
         }
 
         public static NetworkConfiguration defaultNetworkConfiguration() {

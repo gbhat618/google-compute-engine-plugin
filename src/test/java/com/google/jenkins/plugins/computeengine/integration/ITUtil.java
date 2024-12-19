@@ -299,7 +299,7 @@ class ITUtil {
                 .region(REGION)
                 .zone(ZONE)
                 .machineType(MACHINE_TYPE)
-                .provisioningType(PREEMPTIBLE ? new PreemptibleVm() : new Standard())
+                .provisioningType(PREEMPTIBLE ? new PreemptibleVm() : new Standard(0))
                 .minCpuPlatform(MIN_CPU_PLATFORM)
                 .description(CONFIG_DESC)
                 .bootDiskType(BOOT_DISK_TYPE)

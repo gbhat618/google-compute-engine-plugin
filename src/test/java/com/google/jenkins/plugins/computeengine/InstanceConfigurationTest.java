@@ -310,7 +310,7 @@ public class InstanceConfigurationTest {
                 .machineType(MACHINE_TYPE)
                 .numExecutorsStr(NUM_EXECUTORS)
                 .startupScript(STARTUP_SCRIPT)
-                .provisioningType(PREEMPTIBLE ? new PreemptibleVm() : new Standard())
+                .provisioningType(PREEMPTIBLE ? new PreemptibleVm() : new Standard(0))
                 .labels(LABEL)
                 .description(CONFIG_DESC)
                 .bootDiskType(BOOT_DISK_TYPE)
