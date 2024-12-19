@@ -627,7 +627,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             return SshConfiguration.builder().customPrivateKeyCredentialsId("").build();
         }
 
-        @SuppressWarnings("unused")
+        @SuppressWarnings("unused") // jelly
         public ProvisioningType defaultProvisioningType() {
             return new Standard();
         }
