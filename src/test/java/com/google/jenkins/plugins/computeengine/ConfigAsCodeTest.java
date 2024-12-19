@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 
 import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
@@ -44,6 +45,7 @@ public class ConfigAsCodeTest {
         assertEquals("Wrong configurations runAsUser", "jenkins", configuration.getRunAsUser());
         assertEquals("Wrong configurations remoteFs", "agent", configuration.getRemoteFs());
         assertEquals("Wrong configurations javaExecPath", "java", configuration.getJavaExecPath());
+        assertNull("Wrong configuration provisioningType non null", configuration.getProvisioningType());
     }
 
     @Test
@@ -57,7 +59,7 @@ public class ConfigAsCodeTest {
     }
 
     @Test
-    @ConfiguredWithCode("casc-preemptible-compatibility.yml")
+    @ConfiguredWithCode("casc-preemptible-test.yml")
     public void provisioningTypeShouldBePreemptible() {
         ComputeEngineCloud cloud = (ComputeEngineCloud) jenkinsRule.jenkins.clouds.getByName("gce-jenkins-build");
         assertThat(cloud.getConfigurations().get(0).getProvisioningType(), is(instanceOf(PreemptibleVm.class)));

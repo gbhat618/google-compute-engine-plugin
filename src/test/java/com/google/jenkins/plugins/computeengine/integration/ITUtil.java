@@ -115,7 +115,7 @@ class ITUtil {
     private static final boolean BOOT_DISK_AUTODELETE = true;
     private static final String BOOT_DISK_PROJECT_ID = System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID") != null
             ? System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID")
-            : "debian" + "-cloud";
+            : "debian-cloud";
     private static final String BOOT_DISK_IMAGE_NAME = System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME") != null
             ? String.format(
                     "projects/%s/global/images/%s", BOOT_DISK_PROJECT_ID, System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME"))

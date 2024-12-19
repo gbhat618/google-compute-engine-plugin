@@ -74,6 +74,7 @@ public class SpotVmProvisioningWithMaxRunDurationCasCIT {
         initCredentials(j);
         initCloud(j);
         client = initClient(j, vmLabels, log);
+        log.info("init complete");
     }
 
     /**
@@ -143,6 +144,7 @@ public class SpotVmProvisioningWithMaxRunDurationCasCIT {
         String agent2 = printLogsAndReturnAgentName(run.getLog(50));
         log.info("second build completed on " + agent2);
         assertNotEquals(agent1, agent2);
+        log.info("spot vm test completed");
     }
 
     private static String printLogsAndReturnAgentName(List<String> logs) throws IOException {

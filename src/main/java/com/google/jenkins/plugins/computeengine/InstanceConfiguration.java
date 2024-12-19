@@ -244,19 +244,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
         this.createSnapshot = createSnapshot && this.oneShot;
     }
 
-    /**
-     * Required for JCasC Compatibility,
-     * Without this setter explicitly defined, the {@code ConfigAsCodeTest} test fails as `preemptible` is deprecated.
-     * Also see,
-     * <a href="https://github.com/jenkinsci/configuration-as-code-plugin/blob/master/docs/REQUIREMENTS.md#rule-1-dont-write-code-for-data-binding"></a>
-     */
-    @DataBoundSetter
-    public void setPreemptible(boolean preemptible) {
-        if (preemptible) {
-            this.provisioningType = new PreemptibleVm();
-        }
-    }
-
     public static Integer intOrDefault(String toParse, Integer defaultTo) {
         Integer toReturn;
         try {
@@ -307,13 +294,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
     public int getLaunchTimeoutMillis() {
         return launchTimeoutSeconds * 1000;
-    }
-
-    /**
-     * This getter is only for backward compatibility for `preemptible` field.
-     */
-    public boolean getPreemptible() {
-        return provisioningType != null && provisioningType.getClass().equals(PreemptibleVm.class);
     }
 
     public void appendLabels(Map<String, String> labels) {
@@ -1004,8 +984,6 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             instanceConfiguration.setMachineType(this.machineType);
             instanceConfiguration.setNumExecutorsStr(this.numExecutorsStr);
             instanceConfiguration.setStartupScript(this.startupScript);
-            // even though `preemptible` is deprecated, we still set it here for backward compatibility
-            instanceConfiguration.setPreemptible(this.preemptible);
             instanceConfiguration.setProvisioningType(this.provisioningType);
             instanceConfiguration.setMinCpuPlatform(this.minCpuPlatform);
             instanceConfiguration.setLabelString(this.labels);

@@ -20,7 +20,6 @@ import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
 import org.kohsuke.stapler.DataBoundConstructor;
 
-@SuppressWarnings("unused")
 public class PreemptibleVm extends ProvisioningType {
 
     @DataBoundConstructor

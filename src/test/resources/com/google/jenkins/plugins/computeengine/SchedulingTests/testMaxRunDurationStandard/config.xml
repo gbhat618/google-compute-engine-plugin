@@ -13,7 +13,6 @@
             <configurations>
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
                     <provisioningType class="com.google.jenkins.plugins.computeengine.ui.helpers.Standard">
-                        <value>STANDARD</value>
                         <maxRunDurationSeconds>100</maxRunDurationSeconds>
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>

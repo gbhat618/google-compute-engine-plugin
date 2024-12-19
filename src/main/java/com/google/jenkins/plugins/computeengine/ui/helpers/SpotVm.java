@@ -22,16 +22,17 @@ import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
-@SuppressWarnings("unused")
 public class SpotVm extends ProvisioningType {
 
     private long maxRunDurationSeconds;
 
+    @SuppressWarnings("unused") // jelly
     @DataBoundSetter
     public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {
         this.maxRunDurationSeconds = maxRunDurationSeconds;
     }
 
+    @SuppressWarnings("unused") // jelly
     public long getMaxRunDurationSeconds() {
         return maxRunDurationSeconds;
     }
@@ -49,6 +50,7 @@ public class SpotVm extends ProvisioningType {
             return "Spot VM";
         }
 
+        @SuppressWarnings("unused") // jelly
         public FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
             return Utils.doCheckMaxRunDurationSeconds(value);
         }

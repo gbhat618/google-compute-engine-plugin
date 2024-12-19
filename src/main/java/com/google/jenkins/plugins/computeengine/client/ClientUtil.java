@@ -74,9 +74,8 @@ public class ClientUtil {
             ItemGroup itemGroup, List<DomainRequirement> domainRequirements, String credentialsId)
             throws AbortException {
 
-        /* During the integration tests, the parameter `credentialId`=<Project-Id> that we have set during
-            integration test. But the actual credential created within Jenkins is having `id` as a random UUID.
-
+        /* During the integration tests, the parameter `credentialId` is equal to the `<Project-Id>` that we would via the environment variable.
+            But the actual credential created within Jenkins is having `id` as a random UUID.
             So the `CredentialsMatchers.firstOrNull` was returning `null` due to `CredentialsMatchers.withId(credentialsId)`
         */
         if (Main.isUnitTest) {

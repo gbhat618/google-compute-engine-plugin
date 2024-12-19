@@ -14,7 +14,6 @@
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
                     <preemptible>true</preemptible>
                     <provisioningType class="com.google.jenkins.plugins.computeengine.ui.helpers.SpotVm">
-                        <value>SPOT</value>
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>
             </configurations>
