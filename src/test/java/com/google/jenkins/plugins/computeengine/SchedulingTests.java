@@ -16,13 +16,14 @@
 
 package com.google.jenkins.plugins.computeengine;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.compute.model.Scheduling;
-import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
@@ -104,7 +105,8 @@ public class SchedulingTests {
         Scheduling sch = getScheduling();
         GenericJson maxRunDuration = (GenericJson) sch.get("maxRunDuration");
         assertEquals(120L, maxRunDuration.get("seconds"));
-        assertEquals(ProvisioningTypeValue.SPOT, ProvisioningTypeValue.valueOf(sch.getProvisioningModel()));
+        // the `SPOT` word here is the one that is accepted by the GCP API, not an internal representation in the plugin
+        assertThat(sch.getProvisioningModel(), is("SPOT"));
         assertNull(sch.getPreemptible());
         assertEquals("DELETE", sch.getInstanceTerminationAction());
     }

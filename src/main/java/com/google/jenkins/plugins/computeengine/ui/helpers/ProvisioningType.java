@@ -20,28 +20,11 @@ import com.google.api.client.json.GenericJson;
 import com.google.api.services.compute.model.Scheduling;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
-import org.kohsuke.stapler.DataBoundSetter;
 
 /**
  * ProvisioningType represents the type of VM to be provisioned.
  */
 public abstract class ProvisioningType extends AbstractDescribableImpl<ProvisioningType> {
-
-    private ProvisioningTypeValue value;
-
-    public ProvisioningType(ProvisioningTypeValue value) {
-        this.value = value;
-    }
-
-    public ProvisioningTypeValue getValue() {
-        return value;
-    }
-
-    @SuppressWarnings("unused")
-    @DataBoundSetter
-    public void setProvisioningTypeValue(ProvisioningTypeValue value) {
-        this.value = value;
-    }
 
     protected void configureMaxRunDuration(Scheduling scheduling, long maxRunDurationSeconds) {
         if (maxRunDurationSeconds > 0) {
@@ -63,7 +46,7 @@ public abstract class ProvisioningType extends AbstractDescribableImpl<Provision
 
     public abstract static class ProvisioningTypeDescriptor extends Descriptor<ProvisioningType> {
 
-        @SuppressWarnings("unused")
+        @SuppressWarnings("unused") // jelly
         public abstract boolean isMaxRunDurationSupported();
     }
 }

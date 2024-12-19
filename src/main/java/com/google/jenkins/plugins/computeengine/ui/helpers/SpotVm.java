@@ -19,7 +19,6 @@ package com.google.jenkins.plugins.computeengine.ui.helpers;
 import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
 import hudson.util.FormValidation;
-import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
@@ -27,11 +26,6 @@ import org.kohsuke.stapler.QueryParameter;
 public class SpotVm extends ProvisioningType {
 
     private long maxRunDurationSeconds;
-
-    @DataBoundConstructor
-    public SpotVm() {
-        super(ProvisioningTypeValue.SPOT);
-    }
 
     @DataBoundSetter
     public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {

@@ -18,7 +18,6 @@ package com.google.jenkins.plugins.computeengine;
 
 import static com.google.cloud.graphite.platforms.plugin.client.util.ClientUtil.nameFromSelfLink;
 import static com.google.jenkins.plugins.computeengine.ComputeEngineCloud.checkPermissions;
-import static com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue.PREEMPTIBLE;
 
 import com.google.api.services.compute.model.AcceleratorConfig;
 import com.google.api.services.compute.model.AttachedDisk;
@@ -314,7 +313,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
      * This getter is only for backward compatibility for `preemptible` field.
      */
     public boolean getPreemptible() {
-        return provisioningType != null && provisioningType.getValue() == PREEMPTIBLE;
+        return provisioningType != null && provisioningType.getClass().equals(PreemptibleVm.class);
     }
 
     public void appendLabels(Map<String, String> labels) {

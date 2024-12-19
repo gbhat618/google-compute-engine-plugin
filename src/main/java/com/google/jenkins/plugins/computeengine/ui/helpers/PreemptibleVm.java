@@ -24,9 +24,7 @@ import org.kohsuke.stapler.DataBoundConstructor;
 public class PreemptibleVm extends ProvisioningType {
 
     @DataBoundConstructor
-    public PreemptibleVm() {
-        super(ProvisioningTypeValue.PREEMPTIBLE);
-    }
+    public PreemptibleVm() {}
 
     @Override
     public void configure(Scheduling scheduling) {

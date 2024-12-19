@@ -58,6 +58,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. Verifies that instances with preempted
@@ -65,11 +66,6 @@ import org.jvnet.hudson.test.JenkinsRule;
  */
 @Log
 public class ComputeEngineCloudRestartPreemptedIT {
-
-    // Increase the timeout from default 180s to 20minutes.
-    static {
-        System.setProperty("jenkins.test.timeout", "1200");
-    }
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -102,6 +98,7 @@ public class ComputeEngineCloudRestartPreemptedIT {
         teardownResources(client, label, log);
     }
 
+    @WithTimeout(1200)
     @Test
     public void testIfNodeWasPreempted() throws Exception {
         Collection<PlannedNode> planned = cloud.provision(new LabelAtom(LABEL), 1);

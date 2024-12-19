@@ -1,10 +1,13 @@
 package com.google.jenkins.plugins.computeengine;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThrows;
 
-import com.google.jenkins.plugins.computeengine.ui.helpers.ProvisioningTypeValue;
+import com.google.jenkins.plugins.computeengine.ui.helpers.PreemptibleVm;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotPrivateKeyCredentials;
 import hudson.model.Node;
 import io.jenkins.plugins.casc.misc.ConfiguredWithCode;
@@ -57,11 +60,6 @@ public class ConfigAsCodeTest {
     @ConfiguredWithCode("casc-preemptible-compatibility.yml")
     public void provisioningTypeShouldBePreemptible() {
         ComputeEngineCloud cloud = (ComputeEngineCloud) jenkinsRule.jenkins.clouds.getByName("gce-jenkins-build");
-        assertEquals("Zero configurations found", 1, cloud.getConfigurations().size());
-        InstanceConfiguration configuration = cloud.getConfigurations().get(0);
-        assertEquals(
-                "Provisioning type is wrong",
-                ProvisioningTypeValue.PREEMPTIBLE,
-                configuration.getProvisioningType().getValue());
+        assertThat(cloud.getConfigurations().get(0).getProvisioningType(), is(instanceOf(PreemptibleVm.class)));
     }
 }
