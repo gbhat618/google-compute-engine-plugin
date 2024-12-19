@@ -985,7 +985,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
             return FormValidation.ok();
         }
 
-        @SuppressWarnings("unused")
+        @SuppressWarnings("unused") // jelly
         public List<ProvisioningType.ProvisioningTypeDescriptor> getProvisioningTypes() {
             return ExtensionList.lookup(ProvisioningType.ProvisioningTypeDescriptor.class);
         }
