@@ -59,7 +59,7 @@ public class ConfigAsCodeTest {
     }
 
     @Test
-    @ConfiguredWithCode("casc-preemptible-test.yml")
+    @ConfiguredWithCode("casc-preemptible-compatibility.yml")
     public void provisioningTypeShouldBePreemptible() {
         ComputeEngineCloud cloud = (ComputeEngineCloud) jenkinsRule.jenkins.clouds.getByName("gce-jenkins-build");
         assertThat(cloud.getConfigurations().get(0).getProvisioningType(), is(instanceOf(PreemptibleVm.class)));

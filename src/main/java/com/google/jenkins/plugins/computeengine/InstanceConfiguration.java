@@ -173,6 +173,7 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
 
     /** @deprecated Use {@link #provisioningType} instead. */
     @SuppressWarnings("DeprecatedIsStillUsed")
+    @Deprecated
     private transient boolean preemptible;
 
     private static List<Metadata.Items> mergeMetadataItems(List<Metadata.Items> winner, List<Metadata.Items> loser) {
@@ -242,6 +243,24 @@ public class InstanceConfiguration implements Describable<InstanceConfiguration>
     @DataBoundSetter
     public void setCreateSnapshot(boolean createSnapshot) {
         this.createSnapshot = createSnapshot && this.oneShot;
+    }
+
+    /**
+     * This setter is kept only to provide JCasC compatibility, don't use for any other.
+     * Although JCasC is not "required" to keep compatibility, but in this case,
+     * as it is very low effort to keep the compatibility, we have decided to keep it.
+     * <p>
+     * Previously, JCasC syntax would be {@code preemptible: true}, going forward instead should be done as,
+     * {@code provisioningType: preemptibleVm}
+     * <p>
+     * Currently only caller is, JCasC configurators if the bundle is having `preemptible` field defined in it.
+     * Consider deleting it in future (perhaps after a year or so)
+     */
+    @DataBoundSetter
+    public void setPreemptible(boolean preemptible) {
+        if (preemptible) {
+            this.provisioningType = new PreemptibleVm();
+        }
     }
 
     public static Integer intOrDefault(String toParse, Integer defaultTo) {
