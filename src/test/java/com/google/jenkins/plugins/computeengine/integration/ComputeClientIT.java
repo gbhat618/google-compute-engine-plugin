@@ -58,7 +58,7 @@ public class ComputeClientIT {
 
     @Test
     public void testGetImage() throws Exception {
-        Image image = client.getImage("debian-cloud", "debian-12-bookworm-v20241210");
+        Image image = client.getImage("debian-cloud", "debian-9-stretch-v20180820");
         assertNotNull(image);
         assertEquals("READY", image.getStatus());
     }

@@ -20,6 +20,7 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NULL_TEMPLATE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NUM_EXECUTORS;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
+import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.ZONE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.execute;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
@@ -57,8 +58,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. Verifies that instances with preempted
@@ -66,6 +67,8 @@ import org.jvnet.hudson.test.recipes.WithTimeout;
  */
 @Log
 public class ComputeEngineCloudRestartPreemptedIT {
+    @ClassRule
+    public static Timeout timeout = new Timeout(20 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -98,7 +101,6 @@ public class ComputeEngineCloudRestartPreemptedIT {
         teardownResources(client, label, log);
     }
 
-    @WithTimeout(1200)
     @Test
     public void testIfNodeWasPreempted() throws Exception {
         Collection<PlannedNode> planned = cloud.provision(new LabelAtom(LABEL), 1);
@@ -130,6 +132,5 @@ public class ComputeEngineCloudRestartPreemptedIT {
         FreeStyleBuild nextBuild = freeStyleBuild.getNextBuild();
         Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> nextBuild.getResult() != null);
         assertEquals(SUCCESS, nextBuild.getResult());
-        log.info("Tests passed"); // sometimes there are IO connection errors logged afterwards so.
     }
 }
