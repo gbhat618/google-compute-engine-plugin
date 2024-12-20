@@ -12,7 +12,7 @@
             <projectId>my-project</projectId>
             <configurations>
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
-                    <provisioningType class="com.google.jenkins.plugins.computeengine.configs.Standard">
+                    <provisioningType class="com.google.jenkins.plugins.computeengine.config.Standard">
                         <maxRunDurationSeconds>100</maxRunDurationSeconds>
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>

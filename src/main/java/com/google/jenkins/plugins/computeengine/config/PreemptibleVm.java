@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.jenkins.plugins.computeengine.configs;
+package com.google.jenkins.plugins.computeengine.config;
 
 import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;

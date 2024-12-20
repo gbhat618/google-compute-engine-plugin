@@ -13,7 +13,7 @@
             <configurations>
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
                     <preemptible>true</preemptible>
-                    <provisioningType class="com.google.jenkins.plugins.computeengine.configs.SpotVm">
+                    <provisioningType class="com.google.jenkins.plugins.computeengine.config.SpotVm">
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>
             </configurations>

@@ -38,7 +38,7 @@ import com.google.common.collect.Lists;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import com.google.jenkins.plugins.computeengine.ComputeEngineComputer;
 import com.google.jenkins.plugins.computeengine.InstanceConfiguration;
-import com.google.jenkins.plugins.computeengine.configs.PreemptibleVm;
+import com.google.jenkins.plugins.computeengine.config.PreemptibleVm;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;

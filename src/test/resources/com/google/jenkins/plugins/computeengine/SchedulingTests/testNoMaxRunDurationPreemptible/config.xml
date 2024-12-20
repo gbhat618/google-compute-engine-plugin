@@ -12,7 +12,7 @@
             <configurations>
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
                     <preemptible>false</preemptible>
-                    <provisioningType class="com.google.jenkins.plugins.computeengine.configs.PreemptibleVm">
+                    <provisioningType class="com.google.jenkins.plugins.computeengine.config.PreemptibleVm">
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>
             </configurations>
