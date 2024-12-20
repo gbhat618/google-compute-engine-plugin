@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.jenkins.plugins.computeengine.ui.helpers;
+package com.google.jenkins.plugins.computeengine.configs;
 
 import com.google.api.client.json.GenericJson;
 import com.google.api.services.compute.model.Scheduling;

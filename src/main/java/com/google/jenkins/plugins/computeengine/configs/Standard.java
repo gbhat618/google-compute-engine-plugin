@@ -14,32 +14,56 @@
  * limitations under the License.
  */
 
-package com.google.jenkins.plugins.computeengine.ui.helpers;
+package com.google.jenkins.plugins.computeengine.configs;
 
 import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
+import hudson.util.FormValidation;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
+import org.kohsuke.stapler.QueryParameter;
 
-public class PreemptibleVm extends ProvisioningType {
+public class Standard extends ProvisioningType {
 
+    private long maxRunDurationSeconds;
+
+    // required for casc
     @DataBoundConstructor
-    public PreemptibleVm() {}
+    public Standard(long maxRunDurationSeconds) {
+        this.maxRunDurationSeconds = maxRunDurationSeconds;
+    }
+
+    @SuppressWarnings("unused") // jelly
+    @DataBoundSetter
+    public void setMaxRunDurationSeconds(long maxRunDurationSeconds) {
+        this.maxRunDurationSeconds = maxRunDurationSeconds;
+    }
+
+    @SuppressWarnings("unused") // jelly
+    public long getMaxRunDurationSeconds() {
+        return maxRunDurationSeconds;
+    }
 
     @Override
     public void configure(Scheduling scheduling) {
-        scheduling.setPreemptible(true);
+        super.configureMaxRunDuration(scheduling, maxRunDurationSeconds);
     }
 
     @Extension
     public static class DescriptorImpl extends ProvisioningTypeDescriptor {
         @Override
         public String getDisplayName() {
-            return "Preemptible VM";
+            return "Standard";
+        }
+
+        @SuppressWarnings("unused") // jelly
+        public FormValidation doCheckMaxRunDurationSeconds(@QueryParameter String value) {
+            return Utils.doCheckMaxRunDurationSeconds(value);
         }
 
         @Override
         public boolean isMaxRunDurationSupported() {
-            return false;
+            return true;
         }
     }
 }

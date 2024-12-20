@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.jenkins.plugins.computeengine.ui.helpers;
+package com.google.jenkins.plugins.computeengine.configs;
 
 import com.google.api.services.compute.model.Scheduling;
 import hudson.Extension;
@@ -23,13 +23,13 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
-public class Standard extends ProvisioningType {
+public class SpotVm extends ProvisioningType {
 
     private long maxRunDurationSeconds;
 
     // required for casc
     @DataBoundConstructor
-    public Standard(long maxRunDurationSeconds) {
+    public SpotVm(long maxRunDurationSeconds) {
         this.maxRunDurationSeconds = maxRunDurationSeconds;
     }
 
@@ -46,6 +46,7 @@ public class Standard extends ProvisioningType {
 
     @Override
     public void configure(Scheduling scheduling) {
+        scheduling.setProvisioningModel("SPOT");
         super.configureMaxRunDuration(scheduling, maxRunDurationSeconds);
     }
 
@@ -53,7 +54,7 @@ public class Standard extends ProvisioningType {
     public static class DescriptorImpl extends ProvisioningTypeDescriptor {
         @Override
         public String getDisplayName() {
-            return "Standard";
+            return "Spot VM";
         }
 
         @SuppressWarnings("unused") // jelly

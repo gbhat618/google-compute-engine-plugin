@@ -12,7 +12,7 @@
             <projectId>my-project</projectId>
             <configurations>
                 <com.google.jenkins.plugins.computeengine.InstanceConfiguration>
-                    <provisioningType class="com.google.jenkins.plugins.computeengine.ui.helpers.SpotVm">
+                    <provisioningType class="com.google.jenkins.plugins.computeengine.configs.SpotVm">
                         <maxRunDurationSeconds>120</maxRunDurationSeconds>
                     </provisioningType>
                 </com.google.jenkins.plugins.computeengine.InstanceConfiguration>

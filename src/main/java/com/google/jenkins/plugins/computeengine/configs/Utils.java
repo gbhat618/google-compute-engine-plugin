@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.google.jenkins.plugins.computeengine.ui.helpers;
+package com.google.jenkins.plugins.computeengine.configs;
 
 import hudson.util.FormValidation;
 import org.kohsuke.stapler.QueryParameter;
