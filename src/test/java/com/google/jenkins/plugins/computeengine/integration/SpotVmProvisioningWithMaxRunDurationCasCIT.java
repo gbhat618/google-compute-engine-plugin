@@ -26,8 +26,10 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCl
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCredentials;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.windows;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assume.assumeFalse;
 
 import com.google.api.client.util.ArrayMap;
@@ -42,9 +44,7 @@ import hudson.model.labels.LabelAtom;
 import hudson.slaves.NodeProvisioner.PlannedNode;
 import hudson.tasks.Builder;
 import io.jenkins.plugins.casc.ConfigurationAsCode;
-import java.io.IOException;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Future;
@@ -56,6 +56,8 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.PrefixedOutputStream;
+import org.jvnet.hudson.test.TailLog;
 import org.jvnet.hudson.test.recipes.WithTimeout;
 
 @Log
@@ -104,8 +106,6 @@ public class SpotVmProvisioningWithMaxRunDurationCasCIT {
         planned.iterator().next().future.get(); // wait for the node creation to finish
         Instance instance =
                 client.getInstance(PROJECT_ID, ZONE, planned.iterator().next().displayName);
-        String instanceName = instance.getName();
-        log.info("Instance: " + instance.getName());
         assertEquals(1, j.jenkins.getNodes().size());
 
         // assert the scheduling configurations.
@@ -113,19 +113,19 @@ public class SpotVmProvisioningWithMaxRunDurationCasCIT {
         assertEquals("SPOT", sch.get("provisioningModel"));
         assertEquals("DELETE", sch.get("instanceTerminationAction"));
         assertEquals(180, Integer.parseInt((String) ((ArrayMap) sch.get("maxRunDuration")).get("seconds")));
-        log.info("instance scheduling configs are correct");
 
-        // try to execute a build on the agent (freestyle type)
-        FreeStyleProject fp = j.createFreeStyleProject();
+        // try to execute build1 on the agent (freestyle type)
+        FreeStyleProject fp = j.createFreeStyleProject("f");
         Builder step = execute(Commands.ECHO, "hello world");
         fp.getBuildersList().add(step);
         fp.setAssignedLabel(new LabelAtom(LABEL));
-        Future<FreeStyleBuild> buildFuture = fp.scheduleBuild2(0);
-        FreeStyleBuild build = buildFuture.get();
-        assertEquals(Result.SUCCESS, build.getResult());
-        String agent1 = printLogsAndReturnAgentName(build.getLog(50));
-        log.info("first build completed on" + agent1);
-        assertEquals(agent1, instanceName);
+        try (var tailLog = new TailLog(j, "f", 1).withColor(PrefixedOutputStream.Color.CYAN)) {
+            Future<FreeStyleBuild> buildFuture = fp.scheduleBuild2(0);
+            FreeStyleBuild build = buildFuture.get();
+            assertEquals(Result.SUCCESS, build.getResult());
+            assertThat("Build didn't run on GCP", JenkinsRule.getLog(build), is(containsString(instance.getName())));
+            tailLog.waitForCompletion();
+        }
 
         // wait for the agent to be removed due to maxRunDuration; retention time is far more 30 minutes - so the
         // deletion should be due to maxRunDuration.
@@ -136,27 +136,21 @@ public class SpotVmProvisioningWithMaxRunDurationCasCIT {
                 .atMost(180, TimeUnit.SECONDS)
                 .until(() -> client.listInstancesWithLabel(PROJECT_ID, vmLabels).isEmpty());
 
-        // trigger another build, notice a new instance is being created (pipeline type)
-        log.info("proceeding to 2nd build, after no remaining instances");
+        // try to execute 2nd build, this time a pipeline type, and provisions a new agent.
         var p = j.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("node('" + LABEL + "') { sh 'date' }", true));
-        var run = j.assertBuildStatus(Result.SUCCESS, p.scheduleBuild2(0).get());
-        String agent2 = printLogsAndReturnAgentName(run.getLog(50));
-        log.info("second build completed on " + agent2);
-        assertNotEquals(agent1, agent2);
-        log.info("spot vm test completed");
-    }
-
-    private static String printLogsAndReturnAgentName(List<String> logs) throws IOException {
-        String agentName = null;
-        for (String line : logs) {
-            if (line.contains("Building remotely on")) {
-                agentName = line.split(" ")[3];
-            } else if (line.contains("Running on")) {
-                agentName = line.split(" ")[2];
-            }
-            log.info(line);
+        try (var tailLog = new TailLog(j, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
+            var run = j.buildAndAssertSuccess(p);
+            assertEquals(
+                    "jenkins is having more than agent", 1, j.jenkins.getNodes().size());
+            String agentName = j.jenkins.getNodes().get(0).getNodeName();
+            assertEquals(
+                    "agent not present in GCP",
+                    agentName,
+                    client.getInstance(PROJECT_ID, ZONE, agentName).getName());
+            assertThat("Build didn't run on GCP", JenkinsRule.getLog(run), is(containsString(agentName)));
+            tailLog.waitForCompletion();
         }
-        return agentName;
+        j.waitUntilNoActivity();
     }
 }

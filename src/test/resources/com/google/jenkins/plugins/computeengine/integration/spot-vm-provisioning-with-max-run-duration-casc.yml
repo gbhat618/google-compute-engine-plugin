@@ -37,6 +37,6 @@ jenkins:
             bootDiskSourceImageProject: ${env.GOOGLE_BOOT_DISK_PROJECT_ID}
             bootDiskSourceImageName: "projects/${env.GOOGLE_BOOT_DISK_PROJECT_ID}/global/images/${env.GOOGLE_BOOT_DISK_IMAGE_NAME}"
             bootDiskType:       "https://www.googleapis.com/compute/v1/projects/${env.GOOGLE_PROJECT_ID}/zones/${env.GOOGLE_ZONE}/diskTypes/pd-standard"
-            bootDiskSizeGbStr:  10
+            bootDiskSizeGbStr:  20
             bootDiskAutoDelete: true
             serviceAccountEmail: "${env.GOOGLE_SA_NAME}@${env.GOOGLE_PROJECT_ID}.iam.gserviceaccount.com"
