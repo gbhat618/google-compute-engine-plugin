@@ -21,7 +21,6 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NUM_EX
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.SNAPSHOT_LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.SNAPSHOT_TIMEOUT;
-import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.execute;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initClient;
@@ -53,8 +52,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. Verifies that when configured to use one
@@ -63,9 +62,6 @@ import org.jvnet.hudson.test.JenkinsRule;
  */
 public class ComputeEngineCloudSnapshotCreatedIT {
     private static Logger log = Logger.getLogger(ComputeEngineCloudSnapshotCreatedIT.class.getName());
-
-    @ClassRule
-    public static Timeout timeout = new Timeout(15 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -121,16 +117,19 @@ public class ComputeEngineCloudSnapshotCreatedIT {
     }
 
     /** Tests snapshot is created when we have failure builds for given node */
+    @WithTimeout(1200)
     @Test
     public void testSnapshotCreatedNotNull() {
         assertNotNull(createdSnapshot);
     }
 
+    @WithTimeout(1200)
     @Test
     public void testSnapshotCreatedStatusReady() {
         assertEquals("READY", createdSnapshot.getStatus());
     }
 
+    @WithTimeout(1200)
     @Test
     public void testSnapshotCreatedOneShotInstanceDeleted() {
         Awaitility.await()

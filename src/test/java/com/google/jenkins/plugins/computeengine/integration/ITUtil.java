@@ -63,6 +63,7 @@ import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyCredential;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyPair;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotPrivateKeyCredentials;
 import com.google.jenkins.plugins.credentials.oauth.JsonServiceAccountConfig;
+import hudson.model.FreeStyleBuild;
 import hudson.model.Node;
 import hudson.plugins.powershell.PowerShell;
 import hudson.tasks.Builder;
@@ -76,24 +77,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 import jenkins.util.SystemProperties;
+import lombok.extern.java.Log;
 import org.apache.commons.lang.SystemUtils;
+import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /** Common logic and constants used throughout the integration tests. */
+@Log
 class ITUtil {
     static final boolean windows =
             Boolean.parseBoolean(SystemProperties.getString(ITUtil.class.getName() + ".windows", "false"));
     static final boolean customssh =
             Boolean.parseBoolean(SystemProperties.getString(ITUtil.class.getName() + ".customssh", "false"));
-    private static final String DEB_JAVA_STARTUP_SCRIPT = "#!/bin/bash\n"
-            + "/etc/init.d/ssh stop\n"
-            + "echo \"deb http://http.debian.net/debian stretch-backports main\" | \\\n"
-            + "      sudo tee --append /etc/apt/sources.list > /dev/null\n"
-            + "apt-get -y update\n"
-            + "apt-get -y install -t stretch-backports openjdk-8-jdk\n"
-            + "update-java-alternatives -s java-1.8.0-openjdk-amd64\n"
-            + "/etc/init.d/ssh start";
-
     static final String PROJECT_ID = System.getenv("GOOGLE_PROJECT_ID");
     private static final String CREDENTIALS = loadCredentialsString();
     static final String CLOUD_NAME = "integration";
@@ -111,13 +106,9 @@ class ITUtil {
     private static final String CONFIG_DESC = "integration";
     private static final String BOOT_DISK_TYPE = ZONE_BASE + "/diskTypes/pd-ssd";
     private static final boolean BOOT_DISK_AUTODELETE = true;
-    private static final String BOOT_DISK_PROJECT_ID =
-            windows ? System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID") : "debian-cloud";
-    private static final String BOOT_DISK_IMAGE_NAME = windows
-            ? String.format(
-                    "projects/%s/global/images/%s", BOOT_DISK_PROJECT_ID, System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME"))
-            : "projects/debian-cloud/global/images/family/debian-9";
-    private static final String BOOT_DISK_SIZE_GB_STR = windows ? "50" : "10";
+    private static final String BOOT_DISK_PROJECT_ID = bootDiskProject();
+    static final String BOOT_DISK_IMAGE_NAME = bootDiskImageName();
+    private static final String BOOT_DISK_SIZE_GB_STR = windows ? "50" : "20";
     private static final Node.Mode NODE_MODE = Node.Mode.EXCLUSIVE;
     private static final String ACCELERATOR_NAME = "";
     private static final String ACCELERATOR_COUNT = "";
@@ -134,30 +125,59 @@ class ITUtil {
     static final int SNAPSHOT_TIMEOUT = windows ? 600 : 300;
     private static final GoogleKeyCredential SSH_KEY = GoogleKeyPair.generate(RUN_AS_USER);
     static final String SSH_PRIVATE_KEY = Secret.toString(SSH_KEY.getPrivateKey());
-    private static final String WINDOWS_STARTUP_SCRIPT = "Stop-Service sshd\n"
-            + "$ConfiguredPublicKey = "
-            + "\""
-            + ((GoogleKeyPair) SSH_KEY).getPublicKey().trim().substring(RUN_AS_USER.length() + 1)
-            + "\"\n"
-            + "Write-Output \"Second phase\"\n"
-            + "# We are in the second phase of startup where we need to set up authorized_keys for the specified user.\n"
-            + "# Create the .ssh folder and authorized_keys file.\n"
-            + "Set-Content -Path $env:PROGRAMDATA\\ssh\\administrators_authorized_keys -Value $ConfiguredPublicKey\n"
-            + "icacls $env:PROGRAMDATA\\ssh\\administrators_authorized_keys /inheritance:r\n"
-            + "icacls $env:PROGRAMDATA\\ssh\\administrators_authorized_keys /grant SYSTEM:`(F`)\n"
-            + "icacls $env:PROGRAMDATA\\ssh\\administrators_authorized_keys /grant BUILTIN\\Administrators:`(F`)\n"
-            + "Restart-Service sshd";
-    private static final String STARTUP_SCRIPT = windows ? WINDOWS_STARTUP_SCRIPT : DEB_JAVA_STARTUP_SCRIPT;
     static final int TEST_TIMEOUT_MULTIPLIER = (SystemUtils.IS_OS_WINDOWS || windows) ? 3 : 1;
     static final String CONFIG_AS_CODE_PATH =
             windows ? "configuration-as-code-windows-it.yml" : "configuration-as-code-it.yml";
-
     private static String windowsPrivateKeyCredentialsId;
     private static String customsshPrivateKeyCredentialsId;
 
     static String format(String s) {
         assertNotNull("GOOGLE_PROJECT_ID env var must be set", PROJECT_ID);
         return String.format(s, PROJECT_ID);
+    }
+
+    private static String bootDiskImageName() {
+        String projectId = System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID");
+        if (projectId == null) {
+            projectId = PROJECT_ID;
+        }
+
+        String imageName = System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME");
+        if (imageName == null) {
+            imageName = "jenkins-gce-integration-test-jre"; /* Image built with packer, see the `setup-gce-image.sh` */
+        }
+
+        String imageFqn = String.format("projects/%s/global/images/%s", projectId, imageName);
+        log.info("Using boot disk image: " + imageFqn);
+
+        return imageFqn;
+    }
+
+    private static String bootDiskProject() {
+        String project = System.getenv("GOOGLE_BOOT_DISK_PROJECT_ID");
+        project = project != null ? project : PROJECT_ID;
+        log.info("Using boot disk project: " + project);
+        return project;
+    }
+
+    private static String startUpScript() {
+        if (!windows) { // there is no need for a startup script in linux
+            return "";
+        }
+
+        return "Stop-Service sshd\n"
+                + "$ConfiguredPublicKey = "
+                + "\""
+                + ((GoogleKeyPair) SSH_KEY).getPublicKey().trim().substring(RUN_AS_USER.length() + 1)
+                + "\"\n"
+                + "Write-Output \"Second phase\"\n"
+                + "# We are in the second phase of startup where we need to set up authorized_keys for the specified user.\n"
+                + "# Create the .ssh folder and authorized_keys file.\n"
+                + "Set-Content -Path $env:PROGRAMDATA\\ssh\\administrators_authorized_keys -Value $ConfiguredPublicKey\n"
+                + "icacls $env:PROGRAMDATA\\ssh\\administrators_authorized_keys /inheritance:r\n"
+                + "icacls $env:PROGRAMDATA\\ssh\\administrators_authorized_keys /grant SYSTEM:`(F`)\n"
+                + "icacls $env:PROGRAMDATA\\ssh\\administrators_authorized_keys /grant BUILTIN\\Administrators:`(F`)\n"
+                + "Restart-Service sshd";
     }
 
     private static String loadCredentialsString() {
@@ -278,7 +298,7 @@ class ITUtil {
                                         windows
                                                 ? METADATA_WINDOWS_STARTUP_SCRIPT_KEY
                                                 : METADATA_LINUX_STARTUP_SCRIPT_KEY)
-                                .setValue(STARTUP_SCRIPT),
+                                .setValue(startUpScript()),
                         new Metadata.Items()
                                 .setKey(InstanceConfiguration.SSH_METADATA_KEY)
                                 .setValue(((GoogleKeyPair) SSH_KEY).getPublicKey()))));
@@ -329,7 +349,7 @@ class ITUtil {
                 .mode(NODE_MODE)
                 .acceleratorConfiguration(new AcceleratorConfiguration(ACCELERATOR_NAME, ACCELERATOR_COUNT))
                 .runAsUser(RUN_AS_USER)
-                .startupScript(STARTUP_SCRIPT)
+                .startupScript(startUpScript())
                 .javaExecPath("java -Dhudson.remoting.Launcher.pingIntervalSec=-1");
     }
 
@@ -358,5 +378,27 @@ class ITUtil {
         } catch (Exception e) {
             log.warning(String.format("Error deleting instance %s: %s", instanceId, e.getMessage()));
         }
+    }
+
+    public static String printLogsAndGetAgentName(Object build) throws IOException {
+        List<String> logs;
+        if (build instanceof FreeStyleBuild) {
+            logs = ((FreeStyleBuild) build).getLog(1000);
+        } else if (build instanceof WorkflowRun) {
+            logs = ((WorkflowRun) build).getLog(1000);
+        } else {
+            throw new IllegalArgumentException("Unsupported build type");
+        }
+
+        String agentName = null;
+        for (String line : logs) {
+            if (line.contains("Building remotely on")) {
+                agentName = line.split(" ")[3];
+            } else if (line.contains("Running on")) {
+                agentName = line.split(" ")[2];
+            }
+            log.info(line);
+        }
+        return agentName;
     }
 }

@@ -269,7 +269,27 @@
       <version>${powershell.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- Test Dependencies -->
+    <!--
+    The 3 plugins `workflow-cps`, `workflow-durable-task-step`, `workflow-job` are put here
+      to assist tests to also test for `Pipeline` based jobs.
+      It is good to have tests that do test for both `FreeStyle` and `Pipeline` jobs to ensure compatibility.
+      Note: FreeStyle job comes with jenkins core itself, so there is no need for additional dependency for it.
+    -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-durable-task-step</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-job</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>

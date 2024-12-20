@@ -59,7 +59,7 @@ import org.jvnet.hudson.test.JenkinsRule;
  * instance is terminated but no snapshot is created.
  */
 public class ComputeEngineCloudNoSnapshotCreatedIT {
-    private static Logger log = Logger.getLogger(ComputeEngineCloudNoSnapshotCreatedIT.class.getName());
+    private static final Logger log = Logger.getLogger(ComputeEngineCloudNoSnapshotCreatedIT.class.getName());
 
     @ClassRule
     public static Timeout timeout = new Timeout(7 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);

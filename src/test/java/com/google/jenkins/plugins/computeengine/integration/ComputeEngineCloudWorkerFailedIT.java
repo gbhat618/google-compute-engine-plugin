@@ -74,7 +74,8 @@ public class ComputeEngineCloudWorkerFailedIT {
 
         // This configuration creates an instance with no Java installed.
         cloud.setConfigurations(ImmutableList.of(instanceConfigurationBuilder()
-                .startupScript("")
+                .bootDiskSourceImageProject("debian-cloud")
+                .bootDiskSourceImageName("projects/debian-cloud/global/images/family/debian-12")
                 .numExecutorsStr(NUM_EXECUTORS)
                 .labels(LABEL)
                 .oneShot(false)

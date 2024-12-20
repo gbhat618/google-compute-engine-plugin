@@ -28,6 +28,9 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCl
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCredentials;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.instanceConfigurationBuilder;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.teardownResources;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -44,12 +47,17 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.PrefixedOutputStream;
+import org.jvnet.hudson.test.TailLog;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. This verifies the default case for an
@@ -137,5 +145,20 @@ public class ComputeEngineCloudWorkerCreatedIT {
                 .findFirst();
         assertTrue(guestAttributes.isPresent());
         assertEquals(guestAttributes.get(), "TRUE");
+    }
+
+    @WithTimeout(300)
+    @Test
+    public void testWorkerCanExecuteBuild() throws Exception {
+        var p = jenkinsRule.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node('" + LABEL + "') { sh 'date' }", true));
+        try (var tailLog = new TailLog(jenkinsRule, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
+            var r = jenkinsRule.buildAndAssertSuccess(p);
+            tailLog.waitForCompletion();
+            assertThat(
+                    "Build did not run on GCP agent",
+                    JenkinsRule.getLog(r),
+                    is(containsString("Running on " + instance.getName())));
+        }
     }
 }

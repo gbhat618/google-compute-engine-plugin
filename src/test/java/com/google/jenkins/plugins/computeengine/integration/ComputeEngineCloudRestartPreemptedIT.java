@@ -20,7 +20,6 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NULL_TEMPLATE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NUM_EXECUTORS;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
-import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.ZONE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.execute;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
@@ -57,17 +56,19 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.PrefixedOutputStream;
+import org.jvnet.hudson.test.TailLog;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
- * Integration test suite for {@link ComputeEngineCloud}. Verifies that instances with preempted
- * flag will be restarted when preempted.
+ * Integration test suite for {@link ComputeEngineCloud}. Verifies that the build is rescheduled and
+ * completed successfully, when the agent was provisioned with Preemptible Vm, and the agent is preempted during an
+ * ongoing build. See {@code PreemptedCheckCallable} being attached in {@link ComputeEngineComputer} and
+ * {@code ComputeEngineRetentionStrategy#rescheduleTask} usages.
  */
 @Log
 public class ComputeEngineCloudRestartPreemptedIT {
-    @ClassRule
-    public static Timeout timeout = new Timeout(20 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -100,7 +101,23 @@ public class ComputeEngineCloudRestartPreemptedIT {
         teardownResources(client, label, log);
     }
 
+    /**
+     * This test works, the logs are also clear until the preemption event occurs. The {@code ComputeEngineCloud}
+     * launch logs may seem confusing as they differ when we run the test multiple times.
+     * <p>
+     * After the preemption event occurred, even though the executors in the preempted agent are terminated
+     * by the {@code ComputeEngineComputer#getPreemptedStatus}, but for some reason the {@code ComputeEngineCloud} logs
+     * (sometimes and not always) show that Jenkins still attempts to connect to that stopping VM. Due to this attempt
+     * to connect to the stopping VM, you might see some IOException, or host null because no network interface found
+     * etc.
+     * <p>
+     * However note that these errors have nothing to do with the task being rescheduled, a new VM agent does get
+     * provisioned and build is rescheduled on there, and succeeds.
+     * <p>
+     * It is just that in the test logs, the logs get mixed up and may seem confusing.
+     */
     @Test
+    @WithTimeout(1200)
     public void testIfNodeWasPreempted() throws Exception {
         Collection<PlannedNode> planned = cloud.provision(new LabelAtom(LABEL), 1);
         Iterator<PlannedNode> iterator = planned.iterator();
@@ -112,24 +129,34 @@ public class ComputeEngineCloudRestartPreemptedIT {
         ComputeEngineComputer computer = (ComputeEngineComputer) node.toComputer();
         assertTrue("Configuration was set as preemptible but saw as not", computer.getPreemptible());
 
-        FreeStyleProject project = jenkinsRule.createFreeStyleProject();
+        FreeStyleProject project = jenkinsRule.createFreeStyleProject("p");
         Builder step = execute(Commands.SLEEP, "60");
         project.getBuildersList().add(step);
         project.setAssignedLabel(new LabelAtom(LABEL));
-        QueueTaskFuture<FreeStyleBuild> taskFuture = project.scheduleBuild2(0);
+        FreeStyleBuild freeStyleBuild;
+        // build1 that gets failed due to preemption
+        try (var tailLog = new TailLog(jenkinsRule, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
+            QueueTaskFuture<FreeStyleBuild> taskFuture = project.scheduleBuild2(0);
 
-        Awaitility.await().timeout(7, TimeUnit.MINUTES).until(() -> computer.getLog()
-                .contains("listening to metadata for preemption event"));
+            Awaitility.await().timeout(7, TimeUnit.MINUTES).until(() -> computer.getLog()
+                    .contains("listening to metadata for preemption event"));
 
-        client.simulateMaintenanceEvent(PROJECT_ID, ZONE, name);
-        Awaitility.await().timeout(8, TimeUnit.MINUTES).until(computer::getPreempted);
+            client.simulateMaintenanceEvent(PROJECT_ID, ZONE, name);
+            Awaitility.await().timeout(8, TimeUnit.MINUTES).until(computer::getPreempted);
 
-        FreeStyleBuild freeStyleBuild = taskFuture.get();
-        assertEquals(FAILURE, freeStyleBuild.getResult());
+            freeStyleBuild = taskFuture.get();
+            assertEquals(FAILURE, freeStyleBuild.getResult());
+            tailLog.waitForCompletion();
+        }
 
         Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> freeStyleBuild.getNextBuild() != null);
-        FreeStyleBuild nextBuild = freeStyleBuild.getNextBuild();
-        Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> nextBuild.getResult() != null);
-        assertEquals(SUCCESS, nextBuild.getResult());
+
+        // build2 gets automatically scheduled and succeeds
+        try (var tailLog = new TailLog(jenkinsRule, "p", 2).withColor(PrefixedOutputStream.Color.YELLOW)) {
+            FreeStyleBuild nextBuild = freeStyleBuild.getNextBuild();
+            Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> nextBuild.getResult() != null);
+            assertEquals(SUCCESS, nextBuild.getResult());
+            tailLog.waitForCompletion();
+        }
     }
 }

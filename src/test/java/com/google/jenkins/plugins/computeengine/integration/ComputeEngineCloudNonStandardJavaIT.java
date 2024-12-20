@@ -16,11 +16,11 @@
 
 package com.google.jenkins.plugins.computeengine.integration;
 
+import static com.google.jenkins.plugins.computeengine.integration.ITUtil.BOOT_DISK_IMAGE_NAME;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NULL_TEMPLATE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NUM_EXECUTORS;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
-import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.ZONE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initClient;
@@ -42,36 +42,23 @@ import hudson.slaves.NodeProvisioner.PlannedNode;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloudNonStandardJavaIT}. Verifies that instances
  * can be created using a non-standard Java executable path.
  */
 public class ComputeEngineCloudNonStandardJavaIT {
-    private static final String NON_STANDARD_JAVA_STARTUP_SCRIPT = "#!/bin/bash\n"
-            + "sudo su -\n"
-            + "/etc/init.d/ssh stop\n"
-            + "echo \"deb http://http.debian.net/debian stretch-backports main\" >> /etc/apt/sources.list\n"
-            + "apt-get -y update\n"
-            + "apt-get -y install -t stretch-backports openjdk-8-jdk\n"
-            + "update-java-alternatives -s java-1.8.0-openjdk-amd64\n"
-            + "mv /usr/bin/java /usr/bin/non-standard-java\n"
-            + "/etc/init.d/ssh start";
 
     private static final String NON_STANDARD_JAVA_PATH = "/usr/bin/non-standard-java";
 
     private static Logger log = Logger.getLogger(ComputeEngineCloudNonStandardJavaIT.class.getName());
-
-    @ClassRule
-    public static Timeout timeout = new Timeout(5 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -88,9 +75,8 @@ public class ComputeEngineCloudNonStandardJavaIT {
         initCredentials(jenkinsRule);
         ComputeEngineCloud cloud = initCloud(jenkinsRule);
         client = initClient(jenkinsRule, label, log);
-
         InstanceConfiguration instanceConfiguration = instanceConfigurationBuilder()
-                .startupScript(NON_STANDARD_JAVA_STARTUP_SCRIPT)
+                .bootDiskSourceImageName(BOOT_DISK_IMAGE_NAME + "-non-standard-java")
                 .numExecutorsStr(NUM_EXECUTORS)
                 .labels(LABEL)
                 .oneShot(false)
@@ -112,11 +98,13 @@ public class ComputeEngineCloudNonStandardJavaIT {
         teardownResources(client, label, log);
     }
 
+    @WithTimeout(300)
     @Test
     public void testWorkerCreatedOnePlannedNode() {
         assertEquals(1, planned.size());
     }
 
+    @WithTimeout(300)
     @Test
     public void testInstanceStatusRunning() {
         assertEquals("RUNNING", instance.getStatus());
