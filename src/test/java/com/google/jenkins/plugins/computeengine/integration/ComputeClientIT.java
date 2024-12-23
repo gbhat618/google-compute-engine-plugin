@@ -36,7 +36,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 
 /** Integration test suite for {@link ComputeClient}. */
 public class ComputeClientIT {
-    private static Logger log = Logger.getLogger(ComputeClientIT.class.getName());
+    private static final Logger log = Logger.getLogger(ComputeClientIT.class.getName());
 
     private static Map<String, String> label = getLabel(ComputeClientIT.class);
     private static ComputeClient client;

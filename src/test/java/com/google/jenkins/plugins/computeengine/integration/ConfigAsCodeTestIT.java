@@ -31,7 +31,7 @@ import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class ConfigAsCodeTestIT {
-    private static Logger log = Logger.getLogger(ConfigAsCodeTestIT.class.getName());
+    private static final Logger log = Logger.getLogger(ConfigAsCodeTestIT.class.getName());
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();

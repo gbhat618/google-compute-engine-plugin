@@ -374,6 +374,7 @@
             <hudson.agents.NodeProvisioner.MARGIN0>1.0</hudson.agents.NodeProvisioner.MARGIN0>
             <hudson.remoting.Launcher.pingIntervalSec>-1</hudson.remoting.Launcher.pingIntervalSec>
             <com.google.jenkins.plugins.computeengine.integration.ITUtil.windows>${it.windows}</com.google.jenkins.plugins.computeengine.integration.ITUtil.windows>
+            <jenkins.test.timeout>600</jenkins.test.timeout>
           </systemPropertyVariables>
           <excludes>
             <exclude>**/ITUtil.java</exclude>

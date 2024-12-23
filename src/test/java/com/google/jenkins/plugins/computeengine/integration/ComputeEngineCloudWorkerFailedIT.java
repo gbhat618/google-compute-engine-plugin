@@ -52,7 +52,7 @@ import org.jvnet.hudson.test.JenkinsRule;
  * worker fails upon creation when Java is not installed.
  */
 public class ComputeEngineCloudWorkerFailedIT {
-    private static Logger log = Logger.getLogger(ComputeEngineCloudWorkerFailedIT.class.getName());
+    private static final Logger log = Logger.getLogger(ComputeEngineCloudWorkerFailedIT.class.getName());
 
     @ClassRule
     public static Timeout timeout = new Timeout(7L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);

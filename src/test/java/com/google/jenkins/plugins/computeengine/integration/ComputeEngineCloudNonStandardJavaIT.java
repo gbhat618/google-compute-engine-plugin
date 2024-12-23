@@ -71,7 +71,7 @@ public class ComputeEngineCloudNonStandardJavaIT {
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ComputeEngineCloudNonStandardJavaIT.class);
+    private static final Map<String, String> label = getLabel(ComputeEngineCloudNonStandardJavaIT.class);
 
     @BeforeClass
     public static void init() throws Exception {

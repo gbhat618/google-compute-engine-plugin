@@ -64,7 +64,7 @@ import org.jvnet.hudson.test.TailLog;
  * are provisioned properly.
  */
 public class ComputeEngineCloudWorkerCreatedIT {
-    private static Logger log = Logger.getLogger(ComputeEngineCloudWorkerCreatedIT.class.getName());
+    private static final Logger log = Logger.getLogger(ComputeEngineCloudWorkerCreatedIT.class.getName());
 
     @ClassRule
     public static Timeout timeout = new Timeout(10L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);

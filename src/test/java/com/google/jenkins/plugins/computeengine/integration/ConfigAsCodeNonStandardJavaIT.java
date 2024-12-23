@@ -38,7 +38,7 @@ import org.jvnet.hudson.test.JenkinsRule;
  * java path.
  */
 public class ConfigAsCodeNonStandardJavaIT {
-    private static Logger log = Logger.getLogger(ConfigAsCodeNonStandardJavaIT.class.getName());
+    private static final Logger log = Logger.getLogger(ConfigAsCodeNonStandardJavaIT.class.getName());
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
