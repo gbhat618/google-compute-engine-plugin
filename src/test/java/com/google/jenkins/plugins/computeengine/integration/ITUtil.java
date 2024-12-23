@@ -63,7 +63,6 @@ import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyCredential;
 import com.google.jenkins.plugins.computeengine.ssh.GoogleKeyPair;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotPrivateKeyCredentials;
 import com.google.jenkins.plugins.credentials.oauth.JsonServiceAccountConfig;
-import hudson.model.FreeStyleBuild;
 import hudson.model.Node;
 import hudson.plugins.powershell.PowerShell;
 import hudson.tasks.Builder;
@@ -79,7 +78,6 @@ import java.util.logging.Logger;
 import jenkins.util.SystemProperties;
 import lombok.extern.java.Log;
 import org.apache.commons.lang.SystemUtils;
-import org.jenkinsci.plugins.workflow.job.WorkflowRun;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /** Common logic and constants used throughout the integration tests. */
@@ -364,6 +362,8 @@ class ITUtil {
     private static void deleteIntegrationInstances(
             boolean waitForCompletion, ComputeClient client, Map<String, String> label, Logger log) throws IOException {
         List<Instance> instances = client.listInstancesWithLabel(PROJECT_ID, label);
+        log.info("Cleaning up old instances; found " + instances.size() + " instances to delete, it may take a while "
+                + "for this deletion");
         for (Instance i : instances) {
             safeDelete(i.getName(), waitForCompletion, client, log);
         }
@@ -371,34 +371,14 @@ class ITUtil {
 
     private static void safeDelete(String instanceId, boolean waitForCompletion, ComputeClient client, Logger log) {
         try {
+            log.info("deleting instance: " + instanceId);
             Operation operation = client.terminateInstanceAsync(PROJECT_ID, ZONE, instanceId);
             if (waitForCompletion) {
                 client.waitForOperationCompletion(PROJECT_ID, operation.getName(), operation.getZone(), 3 * 60 * 1000);
+                log.info("deletion complete");
             }
         } catch (Exception e) {
             log.warning(String.format("Error deleting instance %s: %s", instanceId, e.getMessage()));
         }
-    }
-
-    public static String printLogsAndGetAgentName(Object build) throws IOException {
-        List<String> logs;
-        if (build instanceof FreeStyleBuild) {
-            logs = ((FreeStyleBuild) build).getLog(1000);
-        } else if (build instanceof WorkflowRun) {
-            logs = ((WorkflowRun) build).getLog(1000);
-        } else {
-            throw new IllegalArgumentException("Unsupported build type");
-        }
-
-        String agentName = null;
-        for (String line : logs) {
-            if (line.contains("Building remotely on")) {
-                agentName = line.split(" ")[3];
-            } else if (line.contains("Running on")) {
-                agentName = line.split(" ")[2];
-            }
-            log.info(line);
-        }
-        return agentName;
     }
 }

@@ -20,6 +20,7 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NULL_TEMPLATE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NUM_EXECUTORS;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
+import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.ZONE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.execute;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
@@ -56,10 +57,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.PrefixedOutputStream;
 import org.jvnet.hudson.test.TailLog;
-import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. Verifies that the build is rescheduled and
@@ -69,6 +70,9 @@ import org.jvnet.hudson.test.recipes.WithTimeout;
  */
 @Log
 public class ComputeEngineCloudRestartPreemptedIT {
+
+    @ClassRule
+    public static Timeout timeout = new Timeout(10L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -117,7 +121,6 @@ public class ComputeEngineCloudRestartPreemptedIT {
      * It is just that in the test logs, the logs get mixed up and may seem confusing.
      */
     @Test
-    @WithTimeout(1200)
     public void testIfNodeWasPreempted() throws Exception {
         Collection<PlannedNode> planned = cloud.provision(new LabelAtom(LABEL), 1);
         Iterator<PlannedNode> iterator = planned.iterator();

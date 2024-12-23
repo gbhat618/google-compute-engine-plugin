@@ -37,11 +37,11 @@ public class ConfigAsCodeTestIT {
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
     @ClassRule
-    public static Timeout timeout = new Timeout(10 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+    public static Timeout timeout = new Timeout(10L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     private static ComputeClient client;
     private static Map<String, String> label = getLabel(ConfigAsCodeTestIT.class);
-    private static String DISABLE_NO_DELAY_SYSTEM_PROPERTY =
+    private static final String DISABLE_NO_DELAY_SYSTEM_PROPERTY =
             "com.google.jenkins.plugins.computeengine.disableNoDelayProvisioning";
 
     @BeforeClass

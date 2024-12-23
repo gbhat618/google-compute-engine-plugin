@@ -63,7 +63,7 @@ public class ComputeEngineCloudMultipleMatchingConfigurationsIT {
     private static final String DESC_2 = "type_2";
 
     @ClassRule
-    public static Timeout timeout = new Timeout(5 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+    public static Timeout timeout = new Timeout(5L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -106,7 +106,7 @@ public class ComputeEngineCloudMultipleMatchingConfigurationsIT {
     }
 
     @Test
-    public void testMultipleLabelsProvisionedWithLabels() throws IOException {
+    public void testRoundRobinProvisioningWhenMultipleMatchingConfigurations() throws IOException {
         assertEquals(2, planned.size());
 
         final Iterator<PlannedNode> iterator = planned.iterator();

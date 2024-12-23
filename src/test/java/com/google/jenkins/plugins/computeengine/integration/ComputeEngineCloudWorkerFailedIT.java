@@ -55,7 +55,7 @@ public class ComputeEngineCloudWorkerFailedIT {
     private static Logger log = Logger.getLogger(ComputeEngineCloudWorkerFailedIT.class.getName());
 
     @ClassRule
-    public static Timeout timeout = new Timeout(7 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+    public static Timeout timeout = new Timeout(7L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();

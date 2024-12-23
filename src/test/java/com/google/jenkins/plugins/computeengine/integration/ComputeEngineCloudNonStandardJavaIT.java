@@ -29,26 +29,30 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCr
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.instanceConfigurationBuilder;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.teardownResources;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.windows;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeFalse;
 
-import com.google.api.services.compute.model.Instance;
 import com.google.cloud.graphite.platforms.plugin.client.ComputeClient;
 import com.google.common.collect.ImmutableList;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import com.google.jenkins.plugins.computeengine.InstanceConfiguration;
-import hudson.model.labels.LabelAtom;
-import hudson.slaves.NodeProvisioner.PlannedNode;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
+import org.jenkinsci.plugins.workflow.job.WorkflowJob;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.recipes.WithTimeout;
+import org.jvnet.hudson.test.PrefixedOutputStream;
+import org.jvnet.hudson.test.TailLog;
 
 /**
  * Integration test suite for {@link ComputeEngineCloudNonStandardJavaIT}. Verifies that instances
@@ -58,15 +62,16 @@ public class ComputeEngineCloudNonStandardJavaIT {
 
     private static final String NON_STANDARD_JAVA_PATH = "/usr/bin/non-standard-java";
 
-    private static Logger log = Logger.getLogger(ComputeEngineCloudNonStandardJavaIT.class.getName());
+    private static final Logger log = Logger.getLogger(ComputeEngineCloudNonStandardJavaIT.class.getName());
+
+    @ClassRule
+    public static Timeout timeout = new Timeout(5, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
     private static ComputeClient client;
     private static Map<String, String> label = getLabel(ComputeEngineCloudNonStandardJavaIT.class);
-    private static Collection<PlannedNode> planned;
-    private static Instance instance;
 
     @BeforeClass
     public static void init() throws Exception {
@@ -85,12 +90,7 @@ public class ComputeEngineCloudNonStandardJavaIT {
                 .javaExecPath(NON_STANDARD_JAVA_PATH)
                 .googleLabels(label)
                 .build();
-
         cloud.setConfigurations(ImmutableList.of(instanceConfiguration));
-        planned = cloud.provision(new LabelAtom(LABEL), 1);
-        planned.iterator().next().future.get();
-        instance = cloud.getClient()
-                .getInstance(PROJECT_ID, ZONE, planned.iterator().next().displayName);
     }
 
     @AfterClass
@@ -98,15 +98,20 @@ public class ComputeEngineCloudNonStandardJavaIT {
         teardownResources(client, label, log);
     }
 
-    @WithTimeout(300)
     @Test
-    public void testWorkerCreatedOnePlannedNode() {
-        assertEquals(1, planned.size());
-    }
-
-    @WithTimeout(300)
-    @Test
-    public void testInstanceStatusRunning() {
-        assertEquals("RUNNING", instance.getStatus());
+    public void testBuildOnNonStandardJavaAgent() throws Exception {
+        var p = jenkinsRule.createProject(WorkflowJob.class, "p");
+        p.setDefinition(new CpsFlowDefinition("node('" + LABEL + "') { sh 'date' }", true));
+        try (var tailLog = new TailLog(jenkinsRule, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
+            var r = jenkinsRule.buildAndAssertSuccess(p);
+            assertEquals(1, jenkinsRule.jenkins.getNodes().size());
+            var instance = client.getInstance(
+                    PROJECT_ID, ZONE, jenkinsRule.jenkins.getNodes().get(0).getNodeName());
+            tailLog.waitForCompletion();
+            assertThat(
+                    "Build did not run on GCP agent",
+                    JenkinsRule.getLog(r),
+                    is(containsString("Running on " + instance.getName())));
+        }
     }
 }

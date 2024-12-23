@@ -20,24 +20,25 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.LABEL;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.NULL_TEMPLATE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.PROJECT_ID;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.TEST_TIMEOUT_MULTIPLIER;
-import static com.google.jenkins.plugins.computeengine.integration.ITUtil.ZONE;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLabel;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initClient;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCloud;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCredentials;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.instanceConfigurationBuilder;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.teardownResources;
+import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 
-import com.google.api.services.compute.model.Instance;
 import com.google.cloud.graphite.platforms.plugin.client.ComputeClient;
 import com.google.common.collect.ImmutableList;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import hudson.model.labels.LabelAtom;
-import hudson.slaves.NodeProvisioner.PlannedNode;
 import java.io.IOException;
-import java.util.Collection;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.junit.AfterClass;
@@ -52,7 +53,7 @@ import org.jvnet.hudson.test.JenkinsRule;
  * when configured to support multiple executors if the second executor is not required.
  */
 public class ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT {
-    private static Logger log = Logger.getLogger(ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT.class.getName());
+    private static final Logger log = Logger.getLogger(ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT.class.getName());
 
     private static final String MULTIPLE_NUM_EXECUTORS = "2";
 
@@ -64,14 +65,13 @@ public class ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT {
 
     private static ComputeClient client;
     private static Map<String, String> label = getLabel(ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT.class);
-    private static Collection<PlannedNode> planned;
-    private static Instance instance;
+    private static ComputeEngineCloud cloud;
 
     @BeforeClass
     public static void init() throws Exception {
         log.info("init");
         initCredentials(jenkinsRule);
-        ComputeEngineCloud cloud = initCloud(jenkinsRule);
+        cloud = initCloud(jenkinsRule);
         client = initClient(jenkinsRule, label, log);
 
         cloud.setConfigurations(ImmutableList.of(instanceConfigurationBuilder()
@@ -82,11 +82,6 @@ public class ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT {
                 .template(NULL_TEMPLATE)
                 .googleLabels(label)
                 .build()));
-
-        planned = cloud.provision(new LabelAtom(LABEL), 2);
-        planned.iterator().next().future.get();
-
-        instance = client.getInstance(PROJECT_ID, ZONE, planned.iterator().next().displayName);
     }
 
     @AfterClass
@@ -95,12 +90,24 @@ public class ComputeEngineCloud1WorkerCreatedFor2ExecutorsIT {
     }
 
     @Test
-    public void test1WorkerCreatedFor2ExecutorsStatusRunning() {
-        assertEquals("RUNNING", instance.getStatus());
-    }
-
-    @Test
-    public void test1WorkerCreatedFor2ExecutorsOnly1Planned() {
+    public void test1WorkerCreatedFor2ExecutorsStatusRunning()
+            throws ExecutionException, InterruptedException, IOException {
+        var planned = cloud.provision(new LabelAtom(LABEL), 2);
         assertEquals(1, planned.size());
+
+        planned.iterator().next().future.get();
+
+        // assert on jenkins side
+        assertEquals(1, jenkinsRule.jenkins.getNodes().size());
+        assertEquals(2, jenkinsRule.jenkins.getNodes().get(0).getNumExecutors());
+
+        // assert on gcp side
+        assertEquals(1, new ArrayList<>(client.listInstancesWithLabel(PROJECT_ID, label)).size());
+        await().timeout(Duration.ofMinutes(2))
+                .until(
+                        () -> client.listInstancesWithLabel(PROJECT_ID, label)
+                                .get(0)
+                                .getStatus(),
+                        is("RUNNING"));
     }
 }

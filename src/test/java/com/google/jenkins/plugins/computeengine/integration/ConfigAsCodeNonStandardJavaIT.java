@@ -44,7 +44,7 @@ public class ConfigAsCodeNonStandardJavaIT {
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
     @ClassRule
-    public static Timeout timeout = new Timeout(5 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+    public static Timeout timeout = new Timeout(5L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     private static ComputeClient client;
     private static Map<String, String> label = getLabel(ConfigAsCodeNonStandardJavaIT.class);

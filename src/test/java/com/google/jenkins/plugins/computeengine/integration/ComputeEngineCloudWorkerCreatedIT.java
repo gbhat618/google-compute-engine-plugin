@@ -34,17 +34,17 @@ import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.google.api.services.compute.model.Instance;
+import com.google.api.services.compute.model.Metadata;
 import com.google.cloud.graphite.platforms.plugin.client.ComputeClient;
 import com.google.common.collect.ImmutableList;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import com.google.jenkins.plugins.computeengine.InstanceConfiguration;
+import hudson.model.Node;
 import hudson.model.labels.LabelAtom;
-import hudson.slaves.NodeProvisioner.PlannedNode;
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition;
@@ -57,7 +57,6 @@ import org.junit.rules.Timeout;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.PrefixedOutputStream;
 import org.jvnet.hudson.test.TailLog;
-import org.jvnet.hudson.test.recipes.WithTimeout;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. This verifies the default case for an
@@ -68,7 +67,7 @@ public class ComputeEngineCloudWorkerCreatedIT {
     private static Logger log = Logger.getLogger(ComputeEngineCloudWorkerCreatedIT.class.getName());
 
     @ClassRule
-    public static Timeout timeout = new Timeout(5 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+    public static Timeout timeout = new Timeout(10L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
@@ -77,8 +76,6 @@ public class ComputeEngineCloudWorkerCreatedIT {
     private static ComputeEngineCloud cloud;
     private static Map<String, String> label = getLabel(ComputeEngineCloudWorkerCreatedIT.class);
     private static InstanceConfiguration instanceConfiguration;
-    private static Collection<PlannedNode> planned;
-    private static Instance instance;
 
     @BeforeClass
     public static void init() throws Exception {
@@ -98,12 +95,6 @@ public class ComputeEngineCloudWorkerCreatedIT {
                 .build();
 
         cloud.setConfigurations(ImmutableList.of(instanceConfiguration));
-        planned = cloud.provision(new LabelAtom(LABEL), 1);
-
-        planned.iterator().next().future.get();
-
-        instance = cloud.getClient()
-                .getInstance(PROJECT_ID, ZONE, planned.iterator().next().displayName);
     }
 
     @AfterClass
@@ -112,48 +103,43 @@ public class ComputeEngineCloudWorkerCreatedIT {
     }
 
     @Test
-    public void testWorkerCreatedOnePlannedNode() {
-        assertEquals(1, planned.size());
-    }
+    public void smokes() throws IOException, ExecutionException, InterruptedException {
+        var planned = cloud.provision(new LabelAtom(LABEL), 1);
+        planned.iterator().next().future.get();
+        var instance = cloud.getClient()
+                .getInstance(PROJECT_ID, ZONE, planned.iterator().next().displayName);
 
-    @Test
-    public void testWorkerCreatedNumberOfLabels() {
-        assertEquals(3, instance.getLabels().size());
-    }
-
-    @Test
-    public void testWorkerCreatedConfigLabelKeyAndValue() {
+        assertEquals("one instance should be provisioned", 1, planned.size());
+        assertEquals("GCP VM should have 3 labels", 3, instance.getLabels().size());
         assertEquals(
-                instanceConfiguration.getNamePrefix(), instance.getLabels().get(ComputeEngineCloud.CONFIG_LABEL_KEY));
-    }
+                "GCP VM name starts with the prefix configured",
+                instanceConfiguration.getNamePrefix(),
+                instance.getLabels().get(ComputeEngineCloud.CONFIG_LABEL_KEY));
+        // This is an important label to be present on the VM as it helps in `CleanLostNodesWork`
+        assertEquals(
+                "GCP VM label has the cloud instanceId as value",
+                cloud.getInstanceId(),
+                instance.getLabels().get(ComputeEngineCloud.CLOUD_ID_LABEL_KEY));
+        assertEquals("GCP VM is running ", "RUNNING", instance.getStatus());
 
-    @Test
-    public void testWorkerCreatedCloudIdKeyAndValue() {
-        assertEquals(cloud.getInstanceId(), instance.getLabels().get(ComputeEngineCloud.CLOUD_ID_LABEL_KEY));
-    }
-
-    @Test
-    public void testWorkerCreatedStatusRunning() {
-        assertEquals("RUNNING", instance.getStatus());
-    }
-
-    @Test
-    public void testGuestAttributesEnabled() {
+        // Verify that the guest-attributes are enabled on the VM
         Optional<String> guestAttributes = instance.getMetadata().getItems().stream()
                 .filter(item -> item.getKey().equals(InstanceConfiguration.GUEST_ATTRIBUTES_METADATA_KEY))
-                .map(item -> item.getValue())
+                .map(Metadata.Items::getValue)
                 .findFirst();
         assertTrue(guestAttributes.isPresent());
-        assertEquals(guestAttributes.get(), "TRUE");
+        assertEquals("TRUE", guestAttributes.get());
     }
 
-    @WithTimeout(300)
     @Test
     public void testWorkerCanExecuteBuild() throws Exception {
         var p = jenkinsRule.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("node('" + LABEL + "') { sh 'date' }", true));
         try (var tailLog = new TailLog(jenkinsRule, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
             var r = jenkinsRule.buildAndAssertSuccess(p);
+            assertEquals(1, jenkinsRule.jenkins.getNodes().size());
+            Node node = jenkinsRule.jenkins.getNodes().get(0);
+            var instance = client.getInstance(PROJECT_ID, ZONE, node.getNodeName());
             tailLog.waitForCompletion();
             assertThat(
                     "Build did not run on GCP agent",
