@@ -98,7 +98,7 @@ Steps to execute integration test
 * Run the integration tests as,  
   * Run all the tests   
     ```bash
-    mvn verify -DskipITs=false -Djenkins.test.timeout=1200
+    mvn verify -DskipITs=false
     ```
   * Run a specific test class  
     ```bash
