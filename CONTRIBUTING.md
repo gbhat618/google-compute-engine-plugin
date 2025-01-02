@@ -61,7 +61,7 @@ An essential part of getting your change through is to make sure all existing te
 
 ##### Integration Tests
 
-Integration tests actually provision instances in a GCP project, run pipeline, take snapshot etc.
+Integration tests provision actual instances in a GCP project, run pipeline, take snapshot etc.
 Therefore, they are disabled in the CI and expected to be executed by contributors in their laptop itself.
 
 Reasons for disabling integration test in CI,
