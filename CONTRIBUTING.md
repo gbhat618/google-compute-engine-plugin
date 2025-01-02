@@ -79,9 +79,9 @@ Steps to execute integration test
   ```bash
   bash setup-gce-image.sh
   ```
-  * The above agent image contains the `java` command is available in the PATH; which the plugin uses by default for launching the agent.
-    This plugin also supports configuring up a custom path for java executable, and we have an integration test for that `ComputeEngineCloudNonStandardJavaIT`.
-    If you would like to execute this test, please create an image with not having `java` on the path, but at a custom path `/usr/bin/non-standard-java`.  
+  * The above agent image contains the `java` command available on the PATH; which the plugin uses by default for launching the agent.
+    This plugin also supports configuring custom path for java executable, and we have an integration test for that `ComputeEngineCloudNonStandardJavaIT`.
+    If you would like to execute this test, please create an image with `java` command not being on the PATH, but at a custom path `/usr/bin/non-standard-java`.  
     To create a non-standard java image, execute,
     ```bash
     bash setup-gce-image.sh non-standard-java
