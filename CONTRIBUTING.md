@@ -123,6 +123,6 @@ Steps to execute integration test
   * In addition to the environment variables mentioned in the previous section, also export these variables too,  
     ```bash
     export GOOGLE_BOOT_DISK_PROJECT_ID=your-project-id # will be the same as your project id
-    expot GOOGLE_BOOT_DISK_IMAGE_NAME=windows-image-name # will be the name of the image you created using packer in Google cloud console
+    export GOOGLE_BOOT_DISK_IMAGE_NAME=windows-image-name # will be the name of the image you created using packer in Google cloud console
     export GOOGLE_JENKINS_PASSWORD=password # will be the password you set when creating the image with packer, used for password based ssh authentication.
     ```
