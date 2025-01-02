@@ -79,10 +79,13 @@ Steps to execute integration test
   ```bash
   bash setup-gce-image.sh
   ```
-  If you want to execute the integration tests for `non-standard-java` location, then create non-standard-java image as,
-  ```bash
-  bash setup-gce-image.sh non-standard-java
-  ```
+  * The above agent image contains the `java` command is available in the PATH; which the plugin uses by default for launching the agent.
+    This plugin also supports configuring up a custom path for java executable, and we have an integration test for that `ComputeEngineCloudNonStandardJavaIT`.
+    If you would like to execute this test, please create an image with not having `java` on the path, but at a custom path `/usr/bin/non-standard-java`.  
+    To create a non-standard java image, execute,
+    ```bash
+    bash setup-gce-image.sh non-standard-java
+    ```
   If you want to delete the images or recreate them, use the arguments `--recreate` or `--delete`.
 
 * Create a service account with relevant access - See [Refer to IAM Credentials](Home.md#iam-credentials)   

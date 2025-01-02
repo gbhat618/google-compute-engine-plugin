@@ -73,21 +73,6 @@ public class ClientUtil {
     private static GoogleRobotCredentials getRobotCredentials(
             ItemGroup itemGroup, List<DomainRequirement> domainRequirements, String credentialsId)
             throws AbortException {
-
-        /* During the integration tests, the parameter `credentialId` is equal to the `<Project-Id>` which is set
-            by the environment variable. But the actual credential created within Jenkins is having `id` as a random
-            UUID. So the `CredentialsMatchers.firstOrNull` was returning `null` due to `CredentialsMatchers.withId
-            (credentialsId)`
-        */
-        if (Main.isUnitTest) {
-            var credentialList = CredentialsProvider.lookupCredentials(
-                    GoogleOAuth2Credentials.class, itemGroup, ACL.SYSTEM, domainRequirements);
-            if (!credentialList.isEmpty()) {
-                return (GoogleRobotCredentials) credentialList.get(0);
-            }
-            return null;
-        }
-
         GoogleOAuth2Credentials credentials = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(
                         GoogleOAuth2Credentials.class, itemGroup, ACL.SYSTEM, domainRequirements),
