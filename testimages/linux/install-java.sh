@@ -16,6 +16,7 @@ install_java() {
   apt-get update
   # jre is sufficient in the integration tests (jdk would be required if we are building a java projects inside the agent.)
   apt-get install -y temurin-21-jre
+  java -version
 
   if [[ "$AGENT_IMAGE" == *non-standard-java ]]; then
     sudo mv /usr/bin/java /usr/bin/non-standard-java
