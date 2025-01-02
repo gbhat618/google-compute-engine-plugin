@@ -16,11 +16,12 @@
 
 package com.google.jenkins.plugins.computeengine;
 
-import static com.google.jenkins.plugins.computeengine.ComputeEngineCloud.CLOUD_ID_LABEL_KEY;
 import static java.util.Collections.emptyList;
 
 import com.google.api.services.compute.model.Instance;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
+
 import hudson.Extension;
 import hudson.model.PeriodicWork;
 import hudson.model.Slave;
@@ -39,16 +40,22 @@ import org.jenkinsci.Symbol;
 @Symbol("cleanLostNodesWork")
 public class CleanLostNodesWork extends PeriodicWork {
     protected final Logger logger = Logger.getLogger(getClass().getName());
+    public static final String NODE_IN_USE_LABEL_KEY = "jenkins_node_in_use";
+    public static final String NODE_TYPE_LABEL_KEY =  "jenkins_node_type";
+    public static final String NODE_TYPE_LABEL_VALUE = "cloud_agent";
+    public static final long RECURRENCE_PERIOD = HOUR;
+    private static final int ORPHAN_MULTIPLIER = 3;
 
     /** {@inheritDoc} */
     @Override
     public long getRecurrencePeriod() {
-        return HOUR;
+        return RECURRENCE_PERIOD;
     }
 
     /** {@inheritDoc} */
+    @VisibleForTesting
     @Override
-    protected void doRun() {
+    public void doRun() {
         logger.log(Level.FINEST, "Starting clean lost nodes worker");
         getClouds().forEach(this::cleanCloud);
     }
@@ -57,15 +64,18 @@ public class CleanLostNodesWork extends PeriodicWork {
         logger.log(Level.FINEST, "Cleaning cloud " + cloud.getCloudName());
         List<Instance> remoteInstances = findRemoteInstances(cloud);
         Set<String> localInstances = findLocalInstances(cloud);
-        remoteInstances.stream()
-                .filter(remote -> isOrphaned(remote, localInstances))
-                .forEach(remote -> terminateInstance(remote, cloud));
+        updateLocalInstancesLabel(localInstances, cloud);
+        remoteInstances.stream().filter(this::isOrphaned).forEach(remote -> terminateInstance(remote, cloud));
     }
 
-    private boolean isOrphaned(Instance remote, Set<String> localInstances) {
-        String instanceName = remote.getName();
-        logger.log(Level.FINEST, "Checking instance " + instanceName);
-        return !localInstances.contains(instanceName);
+    private boolean isOrphaned(Instance remote) {
+        String nodeInUseTs = remote.getLabels().get(NODE_IN_USE_LABEL_KEY);
+
+        if (nodeInUseTs == null) {
+            return false;
+        }
+
+        return Long.parseLong(nodeInUseTs) < System.currentTimeMillis() - RECURRENCE_PERIOD * ORPHAN_MULTIPLIER;
     }
 
     private void terminateInstance(Instance remote, ComputeEngineCloud cloud) {
@@ -95,7 +105,7 @@ public class CleanLostNodesWork extends PeriodicWork {
     }
 
     private List<Instance> findRemoteInstances(ComputeEngineCloud cloud) {
-        Map<String, String> filterLabel = ImmutableMap.of(CLOUD_ID_LABEL_KEY, cloud.getInstanceId());
+        Map<String, String> filterLabel = ImmutableMap.of(CleanLostNodesWork.NODE_TYPE_LABEL_KEY, CleanLostNodesWork.NODE_TYPE_LABEL_VALUE);
         try {
             return cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), filterLabel).stream()
                     .filter(instance -> shouldTerminateStatus(instance.getStatus()))
@@ -108,5 +118,17 @@ public class CleanLostNodesWork extends PeriodicWork {
 
     private boolean shouldTerminateStatus(String status) {
         return !status.equals("STOPPING");
+    }
+
+    private void updateLocalInstancesLabel(Set<String> localInstances, ComputeEngineCloud cloud) {
+        localInstances.forEach(instanceName -> {
+            try {
+                var instance = cloud.getClient().getInstance(cloud.getProjectId(), "", instanceName);
+                instance.setLabels(ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis())));
+                logger.log(Level.FINE, "Updated label for instance " + instanceName);
+            } catch (IOException ex) {
+                logger.log(Level.WARNING, "Error updating label for instance " + instanceName, ex);
+            }
+        });
     }
 }

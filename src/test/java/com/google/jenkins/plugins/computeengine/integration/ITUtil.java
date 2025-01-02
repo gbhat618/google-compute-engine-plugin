@@ -116,7 +116,7 @@ class ITUtil {
     private static final String BOOT_DISK_IMAGE_NAME = windows
             ? String.format(
                     "projects/%s/global/images/%s", BOOT_DISK_PROJECT_ID, System.getenv("GOOGLE_BOOT_DISK_IMAGE_NAME"))
-            : "projects/debian-cloud/global/images/family/debian-9";
+            : "projects/debian-cloud/global/images/family/debian-12";
     private static final String BOOT_DISK_SIZE_GB_STR = windows ? "50" : "10";
     private static final Node.Mode NODE_MODE = Node.Mode.EXCLUSIVE;
     private static final String ACCELERATOR_NAME = "";
@@ -185,7 +185,7 @@ class ITUtil {
         JsonServiceAccountConfig sac = new JsonServiceAccountConfig();
         sac.setSecretJsonKey(bytes);
         assertNotNull(sac.getAccountId());
-        Credentials credentials = new GoogleRobotPrivateKeyCredentials(PROJECT_ID, sac, null);
+        Credentials credentials = new GoogleRobotPrivateKeyCredentials(CredentialsScope.SYSTEM, PROJECT_ID, PROJECT_ID, "test", sac, null);
 
         CredentialsStore store = new SystemCredentialsProvider.ProviderImpl().getStore(r.jenkins);
         assertNotNull("Credentials store can not be null", store);
