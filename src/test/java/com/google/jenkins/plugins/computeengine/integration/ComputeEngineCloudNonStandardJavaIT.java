@@ -29,9 +29,6 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCr
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.instanceConfigurationBuilder;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.teardownResources;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.windows;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assume.assumeFalse;
 

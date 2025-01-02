@@ -203,7 +203,8 @@ class ITUtil {
         JsonServiceAccountConfig sac = new JsonServiceAccountConfig();
         sac.setSecretJsonKey(bytes);
         assertNotNull(sac.getAccountId());
-        Credentials credentials = new GoogleRobotPrivateKeyCredentials(CredentialsScope.SYSTEM, PROJECT_ID, PROJECT_ID, "integration", sac, null);
+        Credentials credentials = new GoogleRobotPrivateKeyCredentials(
+                CredentialsScope.SYSTEM, PROJECT_ID, PROJECT_ID, "integration", sac, null);
 
         CredentialsStore store = new SystemCredentialsProvider.ProviderImpl().getStore(r.jenkins);
         assertNotNull("Credentials store can not be null", store);

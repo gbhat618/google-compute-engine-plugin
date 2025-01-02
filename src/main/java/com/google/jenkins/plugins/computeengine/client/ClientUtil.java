@@ -13,7 +13,6 @@ import com.google.jenkins.plugins.computeengine.ComputeEngineScopeRequirement;
 import com.google.jenkins.plugins.credentials.oauth.GoogleOAuth2Credentials;
 import com.google.jenkins.plugins.credentials.oauth.GoogleRobotCredentials;
 import hudson.AbortException;
-import hudson.Main;
 import hudson.model.ItemGroup;
 import hudson.security.ACL;
 import java.io.IOException;
