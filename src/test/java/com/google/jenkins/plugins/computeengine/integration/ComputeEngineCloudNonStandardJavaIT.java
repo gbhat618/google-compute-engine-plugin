@@ -108,10 +108,7 @@ public class ComputeEngineCloudNonStandardJavaIT {
         assertEquals(1, jenkinsRule.jenkins.getNodes().size());
         var instance = client.getInstance(
                 PROJECT_ID, ZONE, jenkinsRule.jenkins.getNodes().get(0).getNodeName());
-        assertThat(
-                "Build did not run on GCP agent",
-                JenkinsRule.getLog(r),
-                is(containsString("Running on " + instance.getName())));
+        jenkinsRule.assertLogContains("Running on " + instance.getName(), r);
         jenkinsRule.waitUntilNoActivity();
     }
 }
