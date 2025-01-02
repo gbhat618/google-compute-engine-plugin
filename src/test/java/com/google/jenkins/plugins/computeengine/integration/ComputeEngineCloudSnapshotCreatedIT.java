@@ -54,6 +54,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /**
@@ -70,8 +71,11 @@ public class ComputeEngineCloudSnapshotCreatedIT {
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
+    @ClassRule
+    public static BuildWatcher bw = new BuildWatcher();
+
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ComputeEngineCloudSnapshotCreatedIT.class);
+    private static final Map<String, String> label = getLabel(ComputeEngineCloudSnapshotCreatedIT.class);
     private static Snapshot createdSnapshot = null;
 
     @BeforeClass

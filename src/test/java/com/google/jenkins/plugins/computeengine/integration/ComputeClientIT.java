@@ -38,7 +38,7 @@ import org.jvnet.hudson.test.JenkinsRule;
 public class ComputeClientIT {
     private static final Logger log = Logger.getLogger(ComputeClientIT.class.getName());
 
-    private static Map<String, String> label = getLabel(ComputeClientIT.class);
+    private static final Map<String, String> label = getLabel(ComputeClientIT.class);
     private static ComputeClient client;
 
     @ClassRule

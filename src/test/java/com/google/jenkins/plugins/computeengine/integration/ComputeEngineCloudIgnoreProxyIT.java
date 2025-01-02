@@ -37,6 +37,7 @@ import com.google.jenkins.plugins.computeengine.InstanceConfiguration;
 import hudson.ProxyConfiguration;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
+import hudson.model.Result;
 import hudson.model.labels.LabelAtom;
 import hudson.tasks.Builder;
 import java.io.IOException;
@@ -51,9 +52,8 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.PrefixedOutputStream;
-import org.jvnet.hudson.test.TailLog;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. Verifies that when the ignore proxy flag
@@ -61,14 +61,18 @@ import org.jvnet.hudson.test.TailLog;
  */
 @Log
 public class ComputeEngineCloudIgnoreProxyIT {
+
     @ClassRule
-    public static Timeout timeout = new Timeout(10 * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
+    public static Timeout timeout = new Timeout(10L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
+    @ClassRule
+    public static BuildWatcher bw = new BuildWatcher();
+
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ComputeEngineCloudIgnoreProxyIT.class);
+    private static final Map<String, String> label = getLabel(ComputeEngineCloudIgnoreProxyIT.class);
     private static ComputeEngineCloud cloud;
 
     @BeforeClass
@@ -120,12 +124,10 @@ public class ComputeEngineCloudIgnoreProxyIT {
                 .isIgnoreProxy());
 
         var project = createProject(identifier);
-        try (var tailLog = new TailLog(jenkinsRule, identifier, 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
-            Future<FreeStyleBuild> build = project.scheduleBuild2(0);
-            ComputeEngineInstance node = (ComputeEngineInstance) build.get().getBuiltOn();
-            assertTrue(node.isIgnoreProxy());
-            tailLog.waitForCompletion();
-        }
+        Future<FreeStyleBuild> build = project.scheduleBuild2(0);
+        ComputeEngineInstance node = (ComputeEngineInstance) build.get().getBuiltOn();
+        assertTrue(node.isIgnoreProxy());
+        jenkinsRule.assertBuildStatus(Result.SUCCESS, build.get());
     }
 
     // Due to the proxy configured for Jenkins, the build fails because it is not able to connect to
@@ -141,9 +143,7 @@ public class ComputeEngineCloudIgnoreProxyIT {
                 .isIgnoreProxy());
 
         var project = createProject(identifier);
-        try (var tailLog = new TailLog(jenkinsRule, identifier, 1).withColor(PrefixedOutputStream.Color.YELLOW)) {
-            Future<FreeStyleBuild> build = project.scheduleBuild2(0);
-            build.get(300, TimeUnit.SECONDS);
-        }
+        Future<FreeStyleBuild> build = project.scheduleBuild2(0);
+        build.get(300, TimeUnit.SECONDS);
     }
 }

@@ -50,9 +50,8 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.PrefixedOutputStream;
-import org.jvnet.hudson.test.TailLog;
 
 /**
  * Integration test suite for {@link ComputeEngineCloudNonStandardJavaIT}. Verifies that instances
@@ -69,6 +68,9 @@ public class ComputeEngineCloudNonStandardJavaIT {
 
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
+
+    @ClassRule
+    public static BuildWatcher bw = new BuildWatcher();
 
     private static ComputeClient client;
     private static final Map<String, String> label = getLabel(ComputeEngineCloudNonStandardJavaIT.class);
@@ -102,16 +104,14 @@ public class ComputeEngineCloudNonStandardJavaIT {
     public void testBuildOnNonStandardJavaAgent() throws Exception {
         var p = jenkinsRule.createProject(WorkflowJob.class, "p");
         p.setDefinition(new CpsFlowDefinition("node('" + LABEL + "') { sh 'date' }", true));
-        try (var tailLog = new TailLog(jenkinsRule, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
-            var r = jenkinsRule.buildAndAssertSuccess(p);
-            assertEquals(1, jenkinsRule.jenkins.getNodes().size());
-            var instance = client.getInstance(
-                    PROJECT_ID, ZONE, jenkinsRule.jenkins.getNodes().get(0).getNodeName());
-            tailLog.waitForCompletion();
-            assertThat(
-                    "Build did not run on GCP agent",
-                    JenkinsRule.getLog(r),
-                    is(containsString("Running on " + instance.getName())));
-        }
+        var r = jenkinsRule.buildAndAssertSuccess(p);
+        assertEquals(1, jenkinsRule.jenkins.getNodes().size());
+        var instance = client.getInstance(
+                PROJECT_ID, ZONE, jenkinsRule.jenkins.getNodes().get(0).getNodeName());
+        assertThat(
+                "Build did not run on GCP agent",
+                JenkinsRule.getLog(r),
+                is(containsString("Running on " + instance.getName())));
+        jenkinsRule.waitUntilNoActivity();
     }
 }

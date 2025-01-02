@@ -61,7 +61,7 @@ public class ComputeEngineCloudWorkerFailedIT {
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ComputeEngineCloudWorkerFailedIT.class);
+    private static final Map<String, String> label = getLabel(ComputeEngineCloudWorkerFailedIT.class);
     private static Collection<PlannedNode> planned;
 
     @BeforeClass

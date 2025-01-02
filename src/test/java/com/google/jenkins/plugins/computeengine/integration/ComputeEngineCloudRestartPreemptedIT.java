@@ -58,9 +58,8 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.PrefixedOutputStream;
-import org.jvnet.hudson.test.TailLog;
 
 /**
  * Integration test suite for {@link ComputeEngineCloud}. Verifies that the build is rescheduled and
@@ -77,8 +76,11 @@ public class ComputeEngineCloudRestartPreemptedIT {
     @ClassRule
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
+    @ClassRule
+    public static BuildWatcher bw = new BuildWatcher();
+
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ComputeEngineCloudRestartPreemptedIT.class);
+    private static final Map<String, String> label = getLabel(ComputeEngineCloudRestartPreemptedIT.class);
     private static ComputeEngineCloud cloud;
 
     @BeforeClass
@@ -138,28 +140,21 @@ public class ComputeEngineCloudRestartPreemptedIT {
         project.setAssignedLabel(new LabelAtom(LABEL));
         FreeStyleBuild freeStyleBuild;
         // build1 that gets failed due to preemption
-        try (var tailLog = new TailLog(jenkinsRule, "p", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
-            QueueTaskFuture<FreeStyleBuild> taskFuture = project.scheduleBuild2(0);
+        QueueTaskFuture<FreeStyleBuild> taskFuture = project.scheduleBuild2(0);
+        Awaitility.await().timeout(7, TimeUnit.MINUTES).until(() -> computer.getLog()
+                .contains("listening to metadata for preemption event"));
 
-            Awaitility.await().timeout(7, TimeUnit.MINUTES).until(() -> computer.getLog()
-                    .contains("listening to metadata for preemption event"));
+        client.simulateMaintenanceEvent(PROJECT_ID, ZONE, name);
+        Awaitility.await().timeout(8, TimeUnit.MINUTES).until(computer::getPreempted);
 
-            client.simulateMaintenanceEvent(PROJECT_ID, ZONE, name);
-            Awaitility.await().timeout(8, TimeUnit.MINUTES).until(computer::getPreempted);
-
-            freeStyleBuild = taskFuture.get();
-            assertEquals(FAILURE, freeStyleBuild.getResult());
-            tailLog.waitForCompletion();
-        }
+        freeStyleBuild = taskFuture.get();
+        assertEquals(FAILURE, freeStyleBuild.getResult());
 
         Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> freeStyleBuild.getNextBuild() != null);
 
         // build2 gets automatically scheduled and succeeds
-        try (var tailLog = new TailLog(jenkinsRule, "p", 2).withColor(PrefixedOutputStream.Color.YELLOW)) {
-            FreeStyleBuild nextBuild = freeStyleBuild.getNextBuild();
-            Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> nextBuild.getResult() != null);
-            assertEquals(SUCCESS, nextBuild.getResult());
-            tailLog.waitForCompletion();
-        }
+        FreeStyleBuild nextBuild = freeStyleBuild.getNextBuild();
+        Awaitility.await().timeout(5, TimeUnit.MINUTES).until(() -> nextBuild.getResult() != null);
+        assertEquals(SUCCESS, nextBuild.getResult());
     }
 }

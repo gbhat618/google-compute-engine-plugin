@@ -31,6 +31,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
 
 /**
@@ -46,8 +47,11 @@ public class ConfigAsCodeNonStandardJavaIT {
     @ClassRule
     public static Timeout timeout = new Timeout(5L * TEST_TIMEOUT_MULTIPLIER, TimeUnit.MINUTES);
 
+    @ClassRule
+    public static BuildWatcher bw = new BuildWatcher();
+
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ConfigAsCodeNonStandardJavaIT.class);
+    private static final Map<String, String> label = getLabel(ConfigAsCodeNonStandardJavaIT.class);
 
     @BeforeClass
     public static void init() throws Exception {
@@ -90,6 +94,7 @@ public class ConfigAsCodeNonStandardJavaIT {
         FreeStyleProject project = jenkinsRule.createFreeStyleProject();
         Builder step = execute(Commands.ECHO, "works");
         project.getBuildersList().add(step);
+        project.setAssignedLabel(new LabelAtom("integration-non-standard-java"));
         jenkinsRule.buildAndAssertSuccess(project);
     }
 }

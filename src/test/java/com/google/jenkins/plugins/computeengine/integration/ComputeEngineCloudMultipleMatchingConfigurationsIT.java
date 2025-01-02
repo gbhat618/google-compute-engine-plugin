@@ -57,7 +57,8 @@ import org.jvnet.hudson.test.JenkinsRule;
  * with multiple matching {@link InstanceConfiguration} and that these instances are provisioned in round-robin fashion.
  */
 public class ComputeEngineCloudMultipleMatchingConfigurationsIT {
-    private static Logger log = Logger.getLogger(ComputeEngineCloudMultipleMatchingConfigurationsIT.class.getName());
+    private static final Logger log =
+            Logger.getLogger(ComputeEngineCloudMultipleMatchingConfigurationsIT.class.getName());
 
     private static final String DESC_1 = "type_1";
     private static final String DESC_2 = "type_2";
@@ -69,7 +70,7 @@ public class ComputeEngineCloudMultipleMatchingConfigurationsIT {
     public static JenkinsRule jenkinsRule = new JenkinsRule();
 
     private static ComputeClient client;
-    private static Map<String, String> label = getLabel(ComputeEngineCloudMultipleMatchingConfigurationsIT.class);
+    private static final Map<String, String> label = getLabel(ComputeEngineCloudMultipleMatchingConfigurationsIT.class);
     private static Collection<PlannedNode> planned;
 
     @BeforeClass
