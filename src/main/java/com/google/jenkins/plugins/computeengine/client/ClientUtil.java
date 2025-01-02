@@ -72,6 +72,7 @@ public class ClientUtil {
     private static GoogleRobotCredentials getRobotCredentials(
             ItemGroup itemGroup, List<DomainRequirement> domainRequirements, String credentialsId)
             throws AbortException {
+
         GoogleOAuth2Credentials credentials = CredentialsMatchers.firstOrNull(
                 CredentialsProvider.lookupCredentials(
                         GoogleOAuth2Credentials.class, itemGroup, ACL.SYSTEM, domainRequirements),
