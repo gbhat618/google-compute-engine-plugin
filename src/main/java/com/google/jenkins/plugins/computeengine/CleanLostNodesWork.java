@@ -21,14 +21,15 @@ import static java.util.Collections.emptyList;
 import com.google.api.services.compute.model.Instance;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-
+import com.google.jenkins.plugins.computeengine.client.ComputeClientV2;
 import hudson.Extension;
 import hudson.model.PeriodicWork;
 import hudson.model.Slave;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -41,11 +42,9 @@ import org.jenkinsci.Symbol;
 public class CleanLostNodesWork extends PeriodicWork {
     protected final Logger logger = Logger.getLogger(getClass().getName());
     public static final String NODE_IN_USE_LABEL_KEY = "jenkins_node_in_use";
-    public static final String NODE_TYPE_LABEL_KEY =  "jenkins_node_type";
-    public static final String NODE_TYPE_LABEL_VALUE = "cloud_agent";
     public static final long RECURRENCE_PERIOD = Long.parseLong(
-        System.getProperty("jenkins.cloud.gcp.cleanLostNodesWork.recurrencePeriod", String.valueOf(HOUR)));
-    private static final int ORPHAN_MULTIPLIER = 3;
+            System.getProperty("jenkins.cloud.gcp.cleanLostNodesWork.recurrencePeriod", String.valueOf(HOUR)));
+    public static final int LOST_MULTIPLIER = 3;
 
     /** {@inheritDoc} */
     @Override
@@ -63,20 +62,34 @@ public class CleanLostNodesWork extends PeriodicWork {
 
     private void cleanCloud(ComputeEngineCloud cloud) {
         logger.log(Level.FINEST, "Cleaning cloud " + cloud.getCloudName());
-        List<Instance> remoteInstances = findRemoteInstances(cloud);
+        ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(cloud);
+        List<Instance> remoteInstances = findRunningRemoteInstances(clientV2);
         Set<String> localInstances = findLocalInstances(cloud);
-        updateLocalInstancesLabel(localInstances, cloud);
-        remoteInstances.stream().filter(this::isOrphaned).forEach(remote -> terminateInstance(remote, cloud));
+        if (!localInstances.isEmpty()) {
+            updateLocalInstancesLabel(clientV2, localInstances, remoteInstances);
+        }
+        remoteInstances.stream()
+                .filter(remote -> isToRemove(remote, localInstances))
+                .forEach(remote -> terminateInstance(remote, cloud));
     }
 
-    private boolean isOrphaned(Instance remote) {
+    private boolean isToRemove(Instance remote, Set<String> localInstances) {
+        if (localInstances.contains(remote.getName())) {
+            return false;
+        }
         String nodeInUseTs = remote.getLabels().get(NODE_IN_USE_LABEL_KEY);
-
         if (nodeInUseTs == null) {
             return false;
         }
-
-        return Long.parseLong(nodeInUseTs) < System.currentTimeMillis() - RECURRENCE_PERIOD * ORPHAN_MULTIPLIER;
+        long lastUsed = Long.parseLong(nodeInUseTs);
+        var dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSXXX");
+        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
+        boolean toRemove = (lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER);
+        logger.log(
+                Level.FINE,
+                "Instance " + remote.getName() + " last used at: " + dateFormat.format(lastUsed) + ", toRemove: "
+                        + toRemove);
+        return toRemove;
     }
 
     private void terminateInstance(Instance remote, ComputeEngineCloud cloud) {
@@ -97,38 +110,43 @@ public class CleanLostNodesWork extends PeriodicWork {
     }
 
     private Set<String> findLocalInstances(ComputeEngineCloud cloud) {
-        return Jenkins.get().getNodes().stream()
+        var localInstances = Jenkins.get().getNodes().stream()
                 .filter(node -> node instanceof ComputeEngineInstance)
                 .map(node -> (ComputeEngineInstance) node)
                 .filter(node -> node.getCloud().equals(cloud))
                 .map(Slave::getNodeName)
                 .collect(Collectors.toSet());
+        logger.log(Level.FINE, "Found " + localInstances.size() + " local instances");
+        return localInstances;
     }
 
-    private List<Instance> findRemoteInstances(ComputeEngineCloud cloud) {
-        Map<String, String> filterLabel = ImmutableMap.of(CleanLostNodesWork.NODE_TYPE_LABEL_KEY, CleanLostNodesWork.NODE_TYPE_LABEL_VALUE);
+    private List<Instance> findRunningRemoteInstances(ComputeClientV2 clientV2) {
         try {
-            return cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), filterLabel).stream()
-                    .filter(instance -> shouldTerminateStatus(instance.getStatus()))
-                    .collect(Collectors.toList());
+            var remoteInstances = clientV2.retrieveRunningInstanceByLabelKey(NODE_IN_USE_LABEL_KEY);
+            logger.log(Level.FINE, "Found " + remoteInstances.size() + " remote instances");
+            return remoteInstances;
         } catch (IOException ex) {
             logger.log(Level.WARNING, "Error finding remote instances", ex);
             return emptyList();
         }
     }
 
-    private boolean shouldTerminateStatus(String status) {
-        return !status.equals("STOPPING");
-    }
-
-    private void updateLocalInstancesLabel(Set<String> localInstances, ComputeEngineCloud cloud) {
+    /**
+     * Updates the label of the local instances to indicate they are still in use. The method makes N network calls
+     * for N local instances, couldn't find any bulk update apis.
+     */
+    private void updateLocalInstancesLabel(
+            ComputeClientV2 clientV2, Set<String> localInstances, List<Instance> remoteInstances) {
+        var remoteInstancesByName =
+                remoteInstances.stream().collect(Collectors.toMap(Instance::getName, instance -> instance));
         localInstances.forEach(instanceName -> {
+            var instance = remoteInstancesByName.get(instanceName);
             try {
-                var instance = cloud.getClient().getInstance(cloud.getProjectId(), "", instanceName);
-                instance.setLabels(ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis())));
-                logger.log(Level.FINE, "Updated label for instance " + instanceName);
-            } catch (IOException ex) {
-                logger.log(Level.WARNING, "Error updating label for instance " + instanceName, ex);
+                clientV2.updateInstanceLabels(
+                        instance, ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis())));
+                logger.log(Level.FINE, "Updated label for instance " + instance.getName());
+            } catch (IOException e) {
+                logger.log(Level.WARNING, "Error updating label for instance " + instanceName, e);
             }
         });
     }

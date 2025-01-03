@@ -161,8 +161,8 @@ public class ComputeEngineCloud extends AbstractCloudImpl {
 
                 // Apply a label that identifies the name of this instance configuration
                 configuration.appendLabel(CONFIG_LABEL_KEY, configuration.getNamePrefix());
-                configuration.appendLabel(CleanLostNodesWork.NODE_TYPE_LABEL_KEY, CleanLostNodesWork.NODE_TYPE_LABEL_VALUE);
-                configuration.appendLabel(CleanLostNodesWork.NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
+                configuration.appendLabel(
+                        CleanLostNodesWork.NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
             }
         }
         setInstanceId(instanceId);
