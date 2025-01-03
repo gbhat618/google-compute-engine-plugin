@@ -43,7 +43,8 @@ public class CleanLostNodesWork extends PeriodicWork {
     public static final String NODE_IN_USE_LABEL_KEY = "jenkins_node_in_use";
     public static final String NODE_TYPE_LABEL_KEY =  "jenkins_node_type";
     public static final String NODE_TYPE_LABEL_VALUE = "cloud_agent";
-    public static final long RECURRENCE_PERIOD = HOUR;
+    public static final long RECURRENCE_PERIOD = Long.parseLong(
+        System.getProperty("jenkins.cloud.gcp.cleanLostNodesWork.recurrencePeriod", String.valueOf(HOUR)));
     private static final int ORPHAN_MULTIPLIER = 3;
 
     /** {@inheritDoc} */
