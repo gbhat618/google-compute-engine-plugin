@@ -70,18 +70,21 @@ public class ComputeClientV2IT {
                     .instances()
                     .get(PROJECT_ID, ZONE, instance2)
                     .execute();
-            return i1 != null && i2 != null && i1.getStatus().equals("RUNNING") && i2.getStatus().equals("RUNNING");
+            return i1 != null
+                    && i2 != null
+                    && i1.getStatus().equals("RUNNING")
+                    && i2.getStatus().equals("RUNNING");
         });
         String key = googleLabels.keySet().iterator().next();
-        var matchingInstances = clientV2.retrieveRunningInstanceByLabelKey(key);
+        var matchingInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(key, "RUNNING");
         assertEquals(1, matchingInstances.size());
         // stop the instance and notice 0 instance retrieved
         clientV2.getCompute()
                 .instances()
                 .stop(PROJECT_ID, ZONE, matchingInstances.get(0).getName())
                 .execute();
-        await().timeout(5, TimeUnit.SECONDS)
-                .until(() -> clientV2.retrieveRunningInstanceByLabelKey(key).isEmpty());
+        await().timeout(5, TimeUnit.SECONDS).until(() -> clientV2.retrieveInstanceByLabelKeyAndStatus(key, "RUNNING")
+                .isEmpty());
 
         // clean up
         clientV2.getCompute().instances().delete(PROJECT_ID, ZONE, instance1).execute();

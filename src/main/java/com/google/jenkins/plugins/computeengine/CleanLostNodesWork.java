@@ -65,15 +65,15 @@ public class CleanLostNodesWork extends PeriodicWork {
         ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(cloud);
         List<Instance> remoteInstances = findRunningRemoteInstances(clientV2);
         Set<String> localInstances = findLocalInstances(cloud);
-        if (!localInstances.isEmpty()) {
+        if (!(localInstances.isEmpty() || remoteInstances.isEmpty())) {
             updateLocalInstancesLabel(clientV2, localInstances, remoteInstances);
         }
         remoteInstances.stream()
-                .filter(remote -> isToRemove(remote, localInstances))
+                .filter(remote -> isOrphaned(remote, localInstances))
                 .forEach(remote -> terminateInstance(remote, cloud));
     }
 
-    private boolean isToRemove(Instance remote, Set<String> localInstances) {
+    private boolean isOrphaned(Instance remote, Set<String> localInstances) {
         if (localInstances.contains(remote.getName())) {
             return false;
         }
@@ -84,12 +84,12 @@ public class CleanLostNodesWork extends PeriodicWork {
         long lastUsed = Long.parseLong(nodeInUseTs);
         var dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSXXX");
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        boolean toRemove = (lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER);
+        boolean isOrphan = (lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER);
         logger.log(
                 Level.FINE,
-                "Instance " + remote.getName() + " last used at: " + dateFormat.format(lastUsed) + ", toRemove: "
-                        + toRemove);
-        return toRemove;
+                "Instance " + remote.getName() + " last used at: " + dateFormat.format(lastUsed) + ", isOrphan: "
+                        + isOrphan);
+        return isOrphan;
     }
 
     private void terminateInstance(Instance remote, ComputeEngineCloud cloud) {
@@ -122,8 +122,8 @@ public class CleanLostNodesWork extends PeriodicWork {
 
     private List<Instance> findRunningRemoteInstances(ComputeClientV2 clientV2) {
         try {
-            var remoteInstances = clientV2.retrieveRunningInstanceByLabelKey(NODE_IN_USE_LABEL_KEY);
-            logger.log(Level.FINE, "Found " + remoteInstances.size() + " remote instances");
+            var remoteInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(NODE_IN_USE_LABEL_KEY, "RUNNING");
+            logger.log(Level.FINE, "Found " + remoteInstances.size() + " running remote instances");
             return remoteInstances;
         } catch (IOException ex) {
             logger.log(Level.WARNING, "Error finding remote instances", ex);

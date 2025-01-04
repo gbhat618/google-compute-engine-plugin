@@ -35,6 +35,16 @@ public class ComputeClientV2 {
         this.compute = compute;
     }
 
+    /**
+     * Instantiates a {@link ComputeClientV2} using the configuration from a given {@link ComputeEngineCloud}.
+     * <p>Jenkins may host multiple cloud configurations, each with distinct service accounts. This diversity necessitates leveraging an
+     * existing {@link ComputeEngineCloud} instance to accurately configure {@link ComputeClientV2}. Interfacing directly with
+     * {@link ComputeClient} is impractical due to its archived status and inability to extend, as noted in class-level documentation.
+     * Consequently, this method employs reflection to retrieve the necessary {@link Compute} instance from within {@link ComputeClient}.
+     *
+     * @return A newly created {@link ComputeClientV2} instance, configured with the credentials and settings from the specified
+     * {@link ComputeEngineCloud}.
+     */
     public static ComputeClientV2 createFromComputeEngineCloud(ComputeEngineCloud cloud) {
         try {
             ComputeClient client = cloud.getClient();
@@ -87,9 +97,8 @@ public class ComputeClientV2 {
      * @return a list of {@link Instance} in RUNNING state with the specified label key, or empty if none found.
      * @throws IOException on communication errors with Compute Engine API.
      */
-    public List<Instance> retrieveRunningInstanceByLabelKey(String key) throws IOException {
-        // filter syntax: https://cloud.google.com/compute/docs/reference/rest/v1/instances/aggregatedList
-        String filter = "labels." + key + ":*" + " AND status=RUNNING";
+    public List<Instance> retrieveInstanceByLabelKeyAndStatus(String key, String status) throws IOException {
+        String filter = "labels." + key + ":*" + " AND status=" + status;
         var response =
                 compute.instances().aggregatedList(projectId).setFilter(filter).execute();
         var items = response.getItems();
