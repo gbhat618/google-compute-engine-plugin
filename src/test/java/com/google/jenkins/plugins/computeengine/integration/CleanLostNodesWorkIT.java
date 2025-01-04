@@ -36,9 +36,19 @@ import org.jvnet.hudson.test.TailLog;
 public class CleanLostNodesWorkIT {
     private static final Logger log = Logger.getLogger(CleanLostNodesWorkIT.class.getName());
     private static final String LOG_RECORDER_NAME = "CleanLostNodesWork log recorder";
-    /* The GCP VM provisioning takes a while, the first time label value is put when the VM is provision request is
-        sent. So the timestamp can be quite old, by the time the VM is discovered by the CleanLostNodesWork to update the
-        label again. I tried with 30s, and 45s, didn't work. but 60s works correctly (as of now at least).
+    /*
+    Provisioning a Cloud VM encounters two primary delays:
+    1. Initiation Delay: The plugin's initiation of the request is slow and requires optimization.
+    2. Creation Time: The VM undergoes creation and must reach a 'running' state.
+
+    During these phases, the VM's timestamp label retains its initial request value.
+    This can lead to scenarios where, before the current controller's CleanLostNodesWork can update the label,
+    another controller may mistakenly identify and delete the VM as an orphan.
+
+    To solve this race condition from happening, we need to set sufficiently higher value for the recurrence period,
+    which prevents the race condition as well as doesn't make the tests too slow (which are already slow).
+
+    Based on tests conducted with intervals of 30s, 45s, and 60s, a 60s delay currently proves most effective.
     */
     private static final long CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD = 60 * 1000;
     private static final Map<String, String> googleLabels = getLabel(CleanLostNodesWorkIT.class);
@@ -103,7 +113,7 @@ public class CleanLostNodesWorkIT {
                         "Found 1 local instances",
                         "Updated label for instance");
                 RealJenkinsLogUtil.assertLogDoesNotContain(
-                        j, LOG_RECORDER_NAME, "isOrphan: true", "not found locally, removing it");
+                        j, LOG_RECORDER_NAME, "isOrphan: true", "Removing orphaned instance");
             }
         });
         rj2.runRemotely(j -> {
@@ -115,7 +125,7 @@ public class CleanLostNodesWorkIT {
                     "Found 1 local instances",
                     "Updated label for instance",
                     "isOrphan: true",
-                    "not found locally, removing it");
+                    "Removing orphaned instance");
         });
     }
 
@@ -125,7 +135,7 @@ public class CleanLostNodesWorkIT {
             var p1 = createPipeline(j);
             try (var tail = new TailLog(j, "p1", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
                 var run = p1.scheduleBuild2(0).waitForStart();
-                await().timeout(4, TimeUnit.MINUTES).until(() -> run.getLog().contains("Running on"));
+                await().timeout(4, TimeUnit.MINUTES).until(() -> run.getLog().contains("first sleep done"));
                 log.info("Build is already running, can proceed to stopping jenkins to make the agent a lost VM");
                 RealJenkinsLogUtil.assertLogContains(
                         j,
@@ -147,7 +157,11 @@ public class CleanLostNodesWorkIT {
                     cloud.getClient()
                             .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
                             .size());
+
+            log.info("test sleeps for " + getSleepSeconds() + " seconds; so that the lost VM is detected by the "
+                    + "second controller and it is deleted");
             TimeUnit.SECONDS.sleep(getSleepSeconds());
+            log.info("proceeding after sleep");
 
             var instances = cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), googleLabels);
             if (!instances.isEmpty()) {
@@ -159,16 +173,18 @@ public class CleanLostNodesWorkIT {
                                 .get(0)
                                 .getStatus());
             }
-            await("VM is not there").timeout(4, TimeUnit.MINUTES).until(() -> cloud.getClient()
-                    .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
-                    .isEmpty());
+            await("VM didn't get removed even after waiting 2 minutes post it was stopped")
+                    .timeout(2, TimeUnit.MINUTES)
+                    .until(() -> cloud.getClient()
+                            .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
+                            .isEmpty());
             RealJenkinsLogUtil.assertLogContains(
                     j,
                     LOG_RECORDER_NAME,
                     "Found 1 running remote instances",
                     "Found 0 local instances",
                     "isOrphan: true",
-                    "not found locally, removing it");
+                    "Removing orphaned instance");
             RealJenkinsLogUtil.assertLogDoesNotContain(
                     j, LOG_RECORDER_NAME, "Found 1 local instances", "Updated label for instance");
         });
@@ -176,8 +192,15 @@ public class CleanLostNodesWorkIT {
 
     private static WorkflowJob createPipeline(JenkinsRule j) throws IOException {
         var p1 = j.createProject(WorkflowJob.class, "p1");
-        p1.setDefinition(new CpsFlowDefinition(
-                "node('integration') { echo 'hello'\nsleep " + getSleepSeconds() + "\necho 'sleep " + "done' }", true));
+        /* Sleep the pipeline for a duration that ensures the periodic task runs `CleanLostNodesWork.LOST_MULTIPLIER
+        + 1` times. This guarantees that if the VM is to be deleted, it will be deleted. The sleep is split into two
+        parts so that the same pipeline can be used in both tests as of now. */
+        String pipelineDefinition = "node('integration') {\n" + "echo 'do first sleep'\n" + "sleep "
+                + CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD / 1000 + "\n"
+                + "echo 'first sleep done'\n" + "sleep "
+                + (getSleepSeconds() - CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD / 1000) + "\n" + "echo 'sleep done'\n"
+                + "}";
+        p1.setDefinition(new CpsFlowDefinition(pipelineDefinition, true));
         return p1;
     }
 

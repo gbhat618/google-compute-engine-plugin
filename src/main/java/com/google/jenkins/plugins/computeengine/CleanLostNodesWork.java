@@ -19,7 +19,6 @@ package com.google.jenkins.plugins.computeengine;
 import static java.util.Collections.emptyList;
 
 import com.google.api.services.compute.model.Instance;
-import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.jenkins.plugins.computeengine.client.ComputeClientV2;
 import hudson.Extension;
@@ -53,9 +52,8 @@ public class CleanLostNodesWork extends PeriodicWork {
     }
 
     /** {@inheritDoc} */
-    @VisibleForTesting
     @Override
-    public void doRun() {
+    protected void doRun() {
         logger.log(Level.FINEST, "Starting clean lost nodes worker");
         getClouds().forEach(this::cleanCloud);
     }
@@ -86,7 +84,7 @@ public class CleanLostNodesWork extends PeriodicWork {
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
         boolean isOrphan = (lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER);
         logger.log(
-                Level.FINE,
+                Level.FINEST,
                 "Instance " + remote.getName() + " last used at: " + dateFormat.format(lastUsed) + ", isOrphan: "
                         + isOrphan);
         return isOrphan;
@@ -94,7 +92,7 @@ public class CleanLostNodesWork extends PeriodicWork {
 
     private void terminateInstance(Instance remote, ComputeEngineCloud cloud) {
         String instanceName = remote.getName();
-        logger.log(Level.INFO, "Remote instance " + instanceName + " not found locally, removing it");
+        logger.log(Level.INFO, "Removing orphaned instance: " + instanceName);
         try {
             cloud.getClient().terminateInstanceAsync(cloud.getProjectId(), remote.getZone(), instanceName);
         } catch (IOException ex) {
@@ -116,14 +114,14 @@ public class CleanLostNodesWork extends PeriodicWork {
                 .filter(node -> node.getCloud().equals(cloud))
                 .map(Slave::getNodeName)
                 .collect(Collectors.toSet());
-        logger.log(Level.FINE, "Found " + localInstances.size() + " local instances");
+        logger.log(Level.FINEST, "Found " + localInstances.size() + " local instances");
         return localInstances;
     }
 
     private List<Instance> findRunningRemoteInstances(ComputeClientV2 clientV2) {
         try {
             var remoteInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(NODE_IN_USE_LABEL_KEY, "RUNNING");
-            logger.log(Level.FINE, "Found " + remoteInstances.size() + " running remote instances");
+            logger.log(Level.FINEST, "Found " + remoteInstances.size() + " running remote instances");
             return remoteInstances;
         } catch (IOException ex) {
             logger.log(Level.WARNING, "Error finding remote instances", ex);
@@ -139,15 +137,17 @@ public class CleanLostNodesWork extends PeriodicWork {
             ComputeClientV2 clientV2, Set<String> localInstances, List<Instance> remoteInstances) {
         var remoteInstancesByName =
                 remoteInstances.stream().collect(Collectors.toMap(Instance::getName, instance -> instance));
-        localInstances.forEach(instanceName -> {
-            var instance = remoteInstancesByName.get(instanceName);
+        for (String instanceName : localInstances) {
+            if (!remoteInstancesByName.containsKey(instanceName)) {
+                continue;
+            }
+            var labelToUpdate = ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
             try {
-                clientV2.updateInstanceLabels(
-                        instance, ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis())));
-                logger.log(Level.FINE, "Updated label for instance " + instance.getName());
+                clientV2.updateInstanceLabels(remoteInstancesByName.get(instanceName), labelToUpdate);
+                logger.log(Level.FINEST, "Updated label for instance " + instanceName);
             } catch (IOException e) {
                 logger.log(Level.WARNING, "Error updating label for instance " + instanceName, e);
             }
-        });
+        }
     }
 }
