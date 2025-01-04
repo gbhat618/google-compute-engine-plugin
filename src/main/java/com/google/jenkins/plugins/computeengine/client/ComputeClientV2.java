@@ -87,15 +87,15 @@ public class ComputeClientV2 {
     }
 
     /**
-     * Retrieves running instances filtered by a label key.
-     * <p>Only instances labeled with the specified key and currently in RUNNING state are included.
-     * Filtering follows the Google Compute Engine's aggregated list filtering syntax:
-     * <a href="https://cloud.google.com/compute/docs/reference/rest/v1/instances/aggregatedList">
-     * https://cloud.google.com/compute/docs/reference/rest/v1/instances/aggregatedList</a>.
+     * Fetches instances by label key existence and status.
+     * <p>Applies Google Compute Engine aggregated list syntax for filtering:
+     * <a href="https://cloud.google.com/compute/docs/reference/rest/v1/instances/aggregatedList">aggregatedList API</a>.
      *
-     * @param key the label key for filtering; should not be null or empty.
-     * @return a list of {@link Instance} in RUNNING state with the specified label key, or empty if none found.
-     * @throws IOException on communication errors with Compute Engine API.
+     * @param key the non-empty label key to filter by.
+     * @param status the instance status (RUNNING, STOPPING, etc.) as defined in:
+     * <a href="https://cloud.google.com/compute/docs/instances/instance-lifecycle#instance-states">Instance States</a>.
+     * @return List of {@link Instance} matching criteria, or empty list if none.
+     * @throws IOException for communication issues with Compute Engine API.
      */
     public List<Instance> retrieveInstanceByLabelKeyAndStatus(String key, String status) throws IOException {
         String filter = "labels." + key + ":*" + " AND status=" + status;

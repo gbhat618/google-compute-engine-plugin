@@ -82,7 +82,7 @@ public class CleanLostNodesWork extends PeriodicWork {
         long lastUsed = Long.parseLong(nodeInUseTs);
         var dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSXXX");
         dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        boolean isOrphan = (lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER);
+        boolean isOrphan = lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER;
         logger.log(
                 Level.FINEST,
                 "Instance " + remote.getName() + " last used at: " + dateFormat.format(lastUsed) + ", isOrphan: "
@@ -137,11 +137,11 @@ public class CleanLostNodesWork extends PeriodicWork {
             ComputeClientV2 clientV2, Set<String> localInstances, List<Instance> remoteInstances) {
         var remoteInstancesByName =
                 remoteInstances.stream().collect(Collectors.toMap(Instance::getName, instance -> instance));
+        var labelToUpdate = ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
         for (String instanceName : localInstances) {
             if (!remoteInstancesByName.containsKey(instanceName)) {
                 continue;
             }
-            var labelToUpdate = ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
             try {
                 clientV2.updateInstanceLabels(remoteInstancesByName.get(instanceName), labelToUpdate);
                 logger.log(Level.FINEST, "Updated label for instance " + instanceName);
