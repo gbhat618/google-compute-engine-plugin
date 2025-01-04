@@ -5,11 +5,11 @@ import com.google.api.services.compute.model.Instance;
 import com.google.api.services.compute.model.InstancesScopedList;
 import com.google.api.services.compute.model.InstancesSetLabelsRequest;
 import com.google.cloud.graphite.platforms.plugin.client.ComputeClient;
-import com.google.common.collect.ImmutableMap;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -73,7 +73,7 @@ public class ComputeClientV2 {
      * @param newLabels the new labels to be merged with or replace the existing labels of the instance; must not be {@code null}
      * @throws IOException if an I/O error occurs during the label update process.
      */
-    public void updateInstanceLabels(Instance instance, ImmutableMap<String, String> newLabels) throws IOException {
+    public void updateInstanceLabels(Instance instance, Map<String, String> newLabels) throws IOException {
         var allLabels = instance.getLabels();
         allLabels.putAll(newLabels);
         var labelsRequest = new InstancesSetLabelsRequest()

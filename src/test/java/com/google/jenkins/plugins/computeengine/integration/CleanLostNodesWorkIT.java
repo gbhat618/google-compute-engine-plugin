@@ -142,10 +142,11 @@ public class CleanLostNodesWorkIT {
         rj2.runRemotely(j -> {
             var cloud = (ComputeEngineCloud) j.jenkins.clouds.getByName("gce-integration");
             assertEquals(
-                "VM is still there", 1
-                            , cloud.getClient()
-                                           .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
-                                           .size());
+                    "VM is still there",
+                    1,
+                    cloud.getClient()
+                            .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
+                            .size());
             TimeUnit.SECONDS.sleep(getSleepSeconds());
 
             var instances = cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), googleLabels);

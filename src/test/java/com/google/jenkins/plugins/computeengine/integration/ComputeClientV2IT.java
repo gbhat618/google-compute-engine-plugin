@@ -9,29 +9,51 @@ import static com.google.jenkins.plugins.computeengine.integration.ITUtil.getLab
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCloud;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.initCredentials;
 import static com.google.jenkins.plugins.computeengine.integration.ITUtil.instanceConfigurationBuilder;
+import static com.google.jenkins.plugins.computeengine.integration.ITUtil.teardownResources;
 import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertEquals;
 
 import com.google.api.services.compute.model.Instance;
-import com.google.common.collect.ImmutableMap;
 import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import com.google.jenkins.plugins.computeengine.client.ComputeClientV2;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import lombok.extern.java.Log;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
+@Log
 public class ComputeClientV2IT {
 
     @Rule
     public JenkinsRule j = new JenkinsRule();
 
-    public void init(JenkinsRule j) throws Exception {
+    private static final Map<String, String> googleLabels = getLabel(ComputeClientV2IT.class);
+    private static final Map<String, String> nonJenkinsLabels = Map.of("non-jenkins-label", "non-jenkins-value");
+    private static final Map<String, String> newLabels = Map.of("new-key", "new-value");
+
+    @Before
+    public void setUp() throws Exception {
         initCredentials(j);
         initCloud(j);
+    }
+
+    @After
+    public void tearDown() throws IOException {
+        teardownResources(getCloud(j).getClient(), googleLabels, log);
+        teardownResources(getCloud(j).getClient(), nonJenkinsLabels, log);
+        // merge googleLabels and newLabels for teardown purposes only
+        Map<String, String> allLabels = new HashMap<>();
+        allLabels.putAll(googleLabels);
+        allLabels.putAll(newLabels);
+        teardownResources(getCloud(j).getClient(), allLabels, log);
     }
 
     public ComputeEngineCloud getCloud(JenkinsRule j) {
@@ -55,69 +77,70 @@ public class ComputeClientV2IT {
     }
 
     @Test
-    public void testLabelFiltering() throws Exception {
-        init(j);
+    public void testRetrieveInstancesByLabelAndStatus() throws Exception {
         ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(getCloud(j));
-        var googleLabels = getLabel(ComputeClientV2IT.class);
         String instance1 = createOneInstance(clientV2, googleLabels);
-        String instance2 = createOneInstance(clientV2, ImmutableMap.of("non-jenkins-label", "non-jenkins-value"));
+        String instance2 = createOneInstance(clientV2, nonJenkinsLabels);
         await().atMost(2, TimeUnit.MINUTES).until(() -> {
-            var i1 = clientV2.getCompute()
-                    .instances()
-                    .get(PROJECT_ID, ZONE, instance1)
-                    .execute();
-            var i2 = clientV2.getCompute()
-                    .instances()
-                    .get(PROJECT_ID, ZONE, instance2)
-                    .execute();
+            var i1 = getInstance(clientV2, instance1);
+            var i2 = getInstance(clientV2, instance2);
             return i1 != null
                     && i2 != null
                     && i1.getStatus().equals("RUNNING")
                     && i2.getStatus().equals("RUNNING");
         });
-        String key = googleLabels.keySet().iterator().next();
-        var matchingInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(key, "RUNNING");
+        String jenkinsKey = googleLabels.keySet().iterator().next();
+        String nonJenkinsKey = nonJenkinsLabels.keySet().iterator().next();
+        var matchingInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(jenkinsKey, "RUNNING");
         assertEquals(1, matchingInstances.size());
-        // stop the instance and notice 0 instance retrieved
-        clientV2.getCompute()
-                .instances()
-                .stop(PROJECT_ID, ZONE, matchingInstances.get(0).getName())
-                .execute();
-        await().timeout(5, TimeUnit.SECONDS).until(() -> clientV2.retrieveInstanceByLabelKeyAndStatus(key, "RUNNING")
-                .isEmpty());
-
-        // clean up
-        clientV2.getCompute().instances().delete(PROJECT_ID, ZONE, instance1).execute();
-        clientV2.getCompute().instances().delete(PROJECT_ID, ZONE, instance2).execute();
+        assertEquals(instance1, matchingInstances.get(0).getName());
+        // stop the instance and see 0 matching instances for jenkins label in RUNNING state
+        clientV2.getCompute().instances().stop(PROJECT_ID, ZONE, instance1).execute();
+        await().timeout(5, TimeUnit.SECONDS)
+                .until(() -> clientV2.retrieveInstanceByLabelKeyAndStatus(jenkinsKey, "RUNNING")
+                        .isEmpty());
+        await().timeout(30, TimeUnit.SECONDS)
+                .until(() -> clientV2.retrieveInstanceByLabelKeyAndStatus(jenkinsKey, "STOPPING").stream()
+                        .map(Instance::getName)
+                        .collect(Collectors.toList())
+                        .contains(instance1));
+        // non-jenkins instance can also be filtered by label and status
+        await().timeout(5, TimeUnit.SECONDS)
+                .until(() -> clientV2.retrieveInstanceByLabelKeyAndStatus(nonJenkinsKey, "RUNNING").stream()
+                        .map(Instance::getName)
+                        .collect(Collectors.toList())
+                        .contains(instance2));
     }
 
     @Test
-    public void updateLabels() throws Exception {
-        init(j);
+    public void testUpdateInstanceLabels() throws Exception {
         ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(getCloud(j));
-        var googleLabels = getLabel(ComputeClientV2IT.class);
         String instance1 = createOneInstance(clientV2, googleLabels);
-        await().atMost(2, TimeUnit.MINUTES)
-                .until(() -> Objects.nonNull(clientV2.getCompute()
-                        .instances()
-                        .get(PROJECT_ID, ZONE, instance1)
-                        .execute()));
-        Instance remote = clientV2.getCompute()
-                .instances()
-                .get(PROJECT_ID, ZONE, instance1)
-                .execute();
-        var newLabels = ImmutableMap.of("new-key", "new-value");
-        clientV2.updateInstanceLabels(remote, newLabels);
-        await().atMost(2, TimeUnit.MINUTES).until(() -> {
-            var updatedInstance = clientV2.getCompute()
-                    .instances()
-                    .get(PROJECT_ID, ZONE, instance1)
-                    .execute();
-            return (updatedInstance.getLabels().containsKey("new-key")
-                    && updatedInstance.getLabels().get("new-key").equals("new-value"));
-        });
+        await().atMost(2, TimeUnit.MINUTES).until(() -> Objects.nonNull(getInstance(clientV2, instance1)));
+        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), newLabels);
+        assertLabel(clientV2, instance1, "new-key", "new-value");
+        // change label value see if it gets updated
+        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), Map.of("new-key", "new-value-2"));
+        assertLabel(clientV2, instance1, "new-key", "new-value-2");
+        // change label value back so that instance can get teardown automatically
+        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), newLabels);
+    }
 
-        // clean up
-        clientV2.getCompute().instances().delete(PROJECT_ID, ZONE, instance1).execute();
+    private static Instance getInstance(ComputeClientV2 clientV2, String instanceName) throws IOException {
+        return clientV2.getCompute()
+                .instances()
+                .get(PROJECT_ID, ZONE, instanceName)
+                .execute();
+    }
+
+    private static void assertLabel(ComputeClientV2 clientV2, String instanceName, String key, String value) {
+        await().atMost(2, TimeUnit.MINUTES).until(() -> {
+            var instance = clientV2.getCompute()
+                    .instances()
+                    .get(PROJECT_ID, ZONE, instanceName)
+                    .execute();
+            return instance.getLabels().containsKey(key)
+                    && instance.getLabels().get(key).equals(value);
+        });
     }
 }
