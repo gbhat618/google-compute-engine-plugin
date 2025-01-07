@@ -51,7 +51,7 @@ public class CleanLostNodesWorkIT {
     Based on tests conducted with intervals of 30s, 45s, and 60s, a 60s delay currently proves most effective.
     */
     private static final long CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD = 60 * 1000;
-    private static final Map<String, String> googleLabels = getLabel(CleanLostNodesWorkIT.class);
+    private static final Map<String, String> GOOGLE_LABELS = getLabel(CleanLostNodesWorkIT.class);
 
     @Rule
     public RealJenkinsRule rj1 = new RealJenkinsRule().withColor(PrefixedOutputStream.Color.BLUE);
