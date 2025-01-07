@@ -56,7 +56,7 @@ public class CleanLostNodesWork extends PeriodicWork {
      * "The value can only contain lowercase letters, numeric characters, underscores and dashes.
      * The value can be at most 63 characters long. International characters are allowed".
      */
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd't'HH_mm_ss_SSS'utc'");
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd't'HH_mm_ss_SSS'z'");
 
     /** {@inheritDoc} */
     @Override
