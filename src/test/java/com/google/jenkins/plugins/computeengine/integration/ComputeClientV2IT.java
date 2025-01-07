@@ -81,14 +81,7 @@ public class ComputeClientV2IT {
         ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(getCloud(j));
         String instance1 = createOneInstance(clientV2, googleLabels);
         String instance2 = createOneInstance(clientV2, nonJenkinsLabels);
-        await().atMost(2, TimeUnit.MINUTES).until(() -> {
-            var i1 = getInstance(clientV2, instance1);
-            var i2 = getInstance(clientV2, instance2);
-            return i1 != null
-                    && i2 != null
-                    && i1.getStatus().equals("RUNNING")
-                    && i2.getStatus().equals("RUNNING");
-        });
+        await().atMost(2, TimeUnit.MINUTES).until(() -> List.of(getInstance(clientV2, instance1), getInstance(clientV2, instance2)), Every.everyItem(instanceIsRunning()));
         String jenkinsKey = googleLabels.keySet().iterator().next();
         String nonJenkinsKey = nonJenkinsLabels.keySet().iterator().next();
         var matchingInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(jenkinsKey, "RUNNING");
