@@ -6,13 +6,14 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasProperty;
 import static org.hamcrest.Matchers.not;
 
-import com.google.jenkins.plugins.computeengine.CleanLostNodesWork;
-import hudson.logging.LogRecorder;
-import hudson.logging.LogRecorderManager;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
-import org.jvnet.hudson.test.JenkinsRule;
+import java.util.logging.Logger;
 
 /**
  * Utility class for asserting log messages in Jenkins when using {@code RealJenkinsRule}.
@@ -21,27 +22,37 @@ import org.jvnet.hudson.test.JenkinsRule;
  */
 public class RealJenkinsLogUtil {
 
-    public static void setupLogRecorder(JenkinsRule j, String logRecorderName) {
-        LogRecorderManager lrm = j.jenkins.getLog();
-        LogRecorder lr = new LogRecorder(logRecorderName);
-        LogRecorder.Target target = new LogRecorder.Target(CleanLostNodesWork.class.getName(), Level.FINEST);
-        lr.setLoggers(List.of(target));
-        lrm.getRecorders().add(lr);
+    private static final Map<String, List<LogRecord>> logRecordsByClass = new HashMap<>();
+
+    public static void setupLogRecorder(String className) {
+        Logger logger = Logger.getLogger(className);
+        logger.setLevel(Level.FINEST);
+        logRecordsByClass.put(className, new ArrayList<>());
+        logger.addHandler(new Handler() {
+            @Override
+            public void publish(LogRecord record) {
+                synchronized (logRecordsByClass) {
+                    logRecordsByClass.get(className).add(record);
+                }
+            }
+
+            @Override
+            public void flush() {}
+
+            @Override
+            public void close() throws SecurityException {}
+        });
     }
 
-    private static List<LogRecord> getLogRecords(JenkinsRule j, String logRecorderName) {
-        return j.jenkins.getLog().getLogRecorder(logRecorderName).getLogRecords();
-    }
-
-    public static void assertLogContains(JenkinsRule j, String logRecorder, String... texts) {
-        var logRecords = getLogRecords(j, logRecorder);
+    public static void assertLogContains(String className, String... texts) {
+        var logRecords = logRecordsByClass.get(className);
         for (var text : texts) {
             assertThat(logRecords, hasItem(hasProperty("message", containsString(text))));
         }
     }
 
-    public static void assertLogDoesNotContain(JenkinsRule j, String logRecorder, String... texts) {
-        var logRecords = getLogRecords(j, logRecorder);
+    public static void assertLogDoesNotContain(String className, String... texts) {
+        var logRecords = logRecordsByClass.get(className);
         for (var text : texts) {
             assertThat(logRecords, not(hasItem(hasProperty("message", containsString(text)))));
         }

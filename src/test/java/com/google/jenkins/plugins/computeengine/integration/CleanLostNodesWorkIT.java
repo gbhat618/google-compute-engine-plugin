@@ -34,7 +34,7 @@ import org.jvnet.hudson.test.TailLog;
 
 public class CleanLostNodesWorkIT {
     private static final Logger LOGGER = Logger.getLogger(CleanLostNodesWorkIT.class.getName());
-    private static final String LOG_RECORDER_NAME = "CleanLostNodesWork log recorder";
+    private static final String RECORDER_CLASS_NAME = CleanLostNodesWork.class.getName();
     /*
     Provisioning a Cloud VM encounters two primary delays:
     1. Initiation Delay: The plugin's initiation of the request is slow and requires optimization.
@@ -78,7 +78,7 @@ public class CleanLostNodesWorkIT {
                         .cloud(cloud)
                         .build();
                 cloud.setConfigurations(ImmutableList.of(instanceConfig));
-                RealJenkinsLogUtil.setupLogRecorder(r, LOG_RECORDER_NAME);
+                RealJenkinsLogUtil.setupLogRecorder(RECORDER_CLASS_NAME);
             });
         }
     }
@@ -100,21 +100,19 @@ public class CleanLostNodesWorkIT {
                 j.buildAndAssertSuccess(p1);
                 tail.waitForCompletion();
                 RealJenkinsLogUtil.assertLogContains(
-                        j,
-                        LOG_RECORDER_NAME,
+                        RECORDER_CLASS_NAME,
                         "Found 1 running remote instances",
                         "Found 1 local instances",
                         "Updated label for instance");
                 RealJenkinsLogUtil.assertLogDoesNotContain(
-                        j, LOG_RECORDER_NAME, "isOrphan: true", "Removing orphaned instance");
+                        RECORDER_CLASS_NAME, "isOrphan: true", "Removing orphaned instance");
             }
         });
         rj2.runRemotely(j -> {
             RealJenkinsLogUtil.assertLogContains(
-                    j, LOG_RECORDER_NAME, "Found 1 running remote instances", "Found 0 local instances");
+                    RECORDER_CLASS_NAME, "Found 1 running remote instances", "Found 0 local instances");
             RealJenkinsLogUtil.assertLogDoesNotContain(
-                    j,
-                    LOG_RECORDER_NAME,
+                    RECORDER_CLASS_NAME,
                     "Found 1 local instances",
                     "Updated label for instance",
                     "isOrphan: true",
@@ -131,13 +129,12 @@ public class CleanLostNodesWorkIT {
                 await().timeout(4, TimeUnit.MINUTES).until(() -> run.getLog().contains("first sleep done"));
                 LOGGER.info("Build is already running, can proceed to stopping jenkins to make the agent a lost VM");
                 RealJenkinsLogUtil.assertLogContains(
-                        j,
-                        LOG_RECORDER_NAME,
+                        RECORDER_CLASS_NAME,
                         "Found 1 running remote instances",
                         "Found 1 local instances",
                         "Updated label for instance");
                 RealJenkinsLogUtil.assertLogDoesNotContain(
-                        j, LOG_RECORDER_NAME, "isOrphan: true", "Removing orphaned instance");
+                        RECORDER_CLASS_NAME, "isOrphan: true", "Removing orphaned instance");
             }
         });
         rj1.stopJenkins();
@@ -172,14 +169,13 @@ public class CleanLostNodesWorkIT {
                             .listInstancesWithLabel(cloud.getProjectId(), GOOGLE_LABELS)
                             .isEmpty());
             RealJenkinsLogUtil.assertLogContains(
-                    j,
-                    LOG_RECORDER_NAME,
+                    RECORDER_CLASS_NAME,
                     "Found 1 running remote instances",
                     "Found 0 local instances",
                     "isOrphan: true",
                     "Removing orphaned instance");
             RealJenkinsLogUtil.assertLogDoesNotContain(
-                    j, LOG_RECORDER_NAME, "Found 1 local instances", "Updated label for instance");
+                    RECORDER_CLASS_NAME, "Found 1 local instances", "Updated label for instance");
         });
     }
 
