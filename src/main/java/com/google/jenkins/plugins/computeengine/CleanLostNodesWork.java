@@ -139,11 +139,12 @@ public class CleanLostNodesWork extends PeriodicWork {
                 remoteInstances.stream().collect(Collectors.toMap(Instance::getName, instance -> instance));
         var labelToUpdate = ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
         for (String instanceName : localInstances) {
-            if (!remoteInstancesByName.containsKey(instanceName)) {
+            var remoteInstance = remoteInstancesByName.get(instanceName);
+            if (remoteInstance == null) {
                 continue;
             }
             try {
-                clientV2.updateInstanceLabels(remoteInstancesByName.get(instanceName), labelToUpdate);
+                clientV2.updateInstanceLabels(remoteInstance, labelToUpdate);
                 logger.log(Level.FINEST, "Updated label for instance " + instanceName);
             } catch (IOException e) {
                 logger.log(Level.WARNING, "Error updating label for instance " + instanceName, e);
