@@ -99,8 +99,9 @@ public class CleanLostNodesWork extends PeriodicWork {
     }
 
     private boolean isOrphaned(Instance remote, Set<String> localInstances) {
-        /* Check if the remote instance is present in localInstances. Although the remote instance is updated with a new timestamp, it is not yet fetched.
-            It is a local copy in this current execution.
+        /* It is necessary to check if the remote instance is present in localInstances.
+           The `remote` instance has an old timestamp because it hasn't been fetched again
+           after the `updateLocalInstancesLabel` call, to avoid extra network calls.
         */
         if (localInstances.contains(remote.getName())) {
             return false;
