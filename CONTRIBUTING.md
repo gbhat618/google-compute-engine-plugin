@@ -54,78 +54,45 @@ An essential part of getting your change through is to make sure all existing te
 * Make sure you are at the directory where pom.xml is located.
 
 ##### Unit Tests
-* Run the following: 
-    ```
-    mvn test
-    ```
+* Run the following:
+
+```
+mvn test
+```
 
 ##### Integration Tests
+* By default, the integration tests are not executed. In case you are interested in executing 
+  them, disable the `skipITs` property.
+* The following environment variables are required to run the integration tests. 5, 6, and 7 are
+  only required when running a windows integration test.
 
-Integration tests provision actual instances in a GCP project, run pipeline, take snapshot etc.
-Therefore, they are disabled in the CI and expected to be executed by contributors in their laptop itself.
+1. GOOGLE_PROJECT_ID
+1. GOOGLE_CREDENTIALS
+1. GOOGLE_REGION
+1. GOOGLE_ZONE
+1. GOOGLE_BOOT_DISK_PROJECT_ID
+1. GOOGLE_BOOT_DISK_IMAGE_NAME
+1. GOOGLE_JENKINS_PASSWORD
+1. GOOGLE_SA_NAME
 
-Reasons for disabling integration test in CI,
-* getting provisioning GCP infra is not possible
-* even if we did get a GCP infra setup in the CI, it is risky to expose that, as someone can abuse the CI.
-
-By default, integration tests are skipped from the maven goals, need to enable using the `skipITs` property.
-
-Steps to execute integration test
-* Prepare VM images  
-  (ideally we should automate this see idea [here](https://github.com/jenkinsci/google-compute-engine-plugin/pull/492#discussion_r1892705637))  
-  The jenkins agent images need to have java installed. We have a packer script to create the image and upload to your configured GCP project.
-  The scripts are located in [testimages/linux](./testimages/linux)
-  Navigate to the directory and execute,
-  ```bash
-  bash setup-gce-image.sh
-  ```
-  * The above agent image contains the `java` command available on the PATH; which the plugin uses by default for launching the agent.
-    This plugin also supports configuring custom path for java executable, and we have an integration test for that `ComputeEngineCloudNonStandardJavaIT`.
-    If you would like to execute this test, please create an image with `java` command not being on the PATH, but at a custom path `/usr/bin/non-standard-java`.  
-    To create a non-standard java image, execute,
-    ```bash
-    bash setup-gce-image.sh non-standard-java
-    ```
-  If you want to delete the images or recreate them, use the arguments `--recreate` or `--delete`.
-
-* Create a service account with relevant access - See [Refer to IAM Credentials](Home.md#iam-credentials)   
-
-* Export these mandatory environment variable   
-  ```bash
-  export GOOGLE_PROJECT_ID=your-project-id
-  export GOOGLE_CREDENTIALS=/path/to/sa-key.json
-  export GOOGLE_REGION=us-central1
-  export GOOGLE_ZONE=us-central1-a
-  export GOOGLE_SA_NAME=jenkins-agent-sa
-  ```
-* Run the integration tests as,  
-  * Run all the tests   
-    ```bash
-    mvn verify -DskipITs=false
-    ```
-  * Run a specific test class  
-    ```bash
-    mvn clean test -Dtest=ComputeEngineCloudRestartPreemptedIT
-    ```
-  * Run a specific test method  
-    ```bash
-    mvn clean test -Dtest=ComputeEngineCloudRestartPreemptedIT#testIfNodeWasPreempted
-    ```
-  You can also debug the tests with surefire by passing `-Dmaven.surefire.debug=true` and in your IDE connect to remote debug port `8000`.
+* Run the following:
+```
+mvn verify -DskipITs=false
+```
 
 ###### Windows Integration Test
 * By default, the integration tests only use linux based agents for testing. If you make a
   windows-related change, or otherwise want to test that a change still works for windows agents,
-  run the tests with the flag `-Dit.windows=true` like this:  
-  ```bash
-  mvn verify -Dit.windows=true
-  ```
-* You need to prepare the windows image before running the tests.  
-  * More information on building your baseline windows image can be found [here](WINDOWS.md)  
-      and an example powershell script for setup can be found [here](windows-it-install.ps1).  
-  * In addition to the environment variables mentioned in the previous section, also export these variables too,  
-    ```bash
-    export GOOGLE_BOOT_DISK_PROJECT_ID=your-project-id # will be the same as your project id
-    export GOOGLE_BOOT_DISK_IMAGE_NAME=windows-image-name # will be the name of the image you created using packer in Google cloud console
-    export GOOGLE_JENKINS_PASSWORD=password # will be the password you set when creating the image with packer, used for password based ssh authentication.
-    ```
+  run the tests with the flag `-Dit.windows=true` like this:
+```bash
+mvn verify -Dit.windows=true
+```
+
+Make sure you have these extra environment variables configured:
+  * GOOGLE_BOOT_DISK_PROJECT_ID will be the same as your project id.
+  * GOOGLE_BOOT_DISK_IMAGE_NAME will be the name of the image you created using packer in Google
+    cloud console.
+  * GOOGLE_JENKINS_PASSWORD will be the password you set when creating the image with packer, used
+    for password based ssh authentication.
+  * More information on building your baseline windows image can be found [here](WINDOWS.md) 
+    and an example powershell script for setup can be found [here](windows-it-install.ps1).
