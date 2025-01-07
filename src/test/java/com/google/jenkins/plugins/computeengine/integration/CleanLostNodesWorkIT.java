@@ -54,10 +54,10 @@ public class CleanLostNodesWorkIT {
     private static final Map<String, String> googleLabels = getLabel(CleanLostNodesWorkIT.class);
 
     @Rule
-    public RealJenkinsRule rj1 = new RealJenkinsRule();
+    public RealJenkinsRule rj1 = new RealJenkinsRule().withColor(PrefixedOutputStream.Color.BLUE);
 
     @Rule
-    public RealJenkinsRule rj2 = new RealJenkinsRule();
+    public RealJenkinsRule rj2 = new RealJenkinsRule().withColor(PrefixedOutputStream.Color.RED);
 
     @Before
     public void init() throws Throwable {
