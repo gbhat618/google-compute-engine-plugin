@@ -173,7 +173,7 @@ public class CleanLostNodesWorkIT {
                                 .get(0)
                                 .getStatus());
             }
-            await("VM didn't get removed even after waiting 2 minutes post it was stopped")
+            await("VM didn't get removed even after waiting 2 minutes after it was stopped")
                     .timeout(2, TimeUnit.MINUTES)
                     .until(() -> cloud.getClient()
                             .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
