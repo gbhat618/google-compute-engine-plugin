@@ -66,7 +66,6 @@
     <changelist>999999-SNAPSHOT</changelist>
     <gitHubRepo>jenkinsci/${project.artifactId}-plugin</gitHubRepo>
     <jenkins.version>2.452.3</jenkins.version>
-    <jenkinsRuleTimeout>0</jenkinsRuleTimeout>
     <skip.surefire.tests>${skipTests}</skip.surefire.tests>
     <skipITs>true</skipITs>
     <it.windows>false</it.windows>
@@ -83,6 +82,7 @@
     <lombok.version>1.18.30</lombok.version>
     <delombok.output>${project.build.directory}/delombok</delombok.output>
     <spotless.check.skip>false</spotless.check.skip>
+    <jenkins.test.timeout>600</jenkins.test.timeout>
   </properties>
 
   <dependencyManagement>
@@ -269,7 +269,27 @@
       <version>${powershell.version}</version>
       <scope>test</scope>
     </dependency>
-    <!-- Test Dependencies -->
+    <!-- https://www.jenkins.io/doc/developer/testing/#working-with-pipeline -->
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-basic-steps</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-cps</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-durable-task-step</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins.workflow</groupId>
+      <artifactId>workflow-job</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
@@ -355,11 +375,11 @@
             <hudson.agents.NodeProvisioner.MARGIN0>1.0</hudson.agents.NodeProvisioner.MARGIN0>
             <hudson.remoting.Launcher.pingIntervalSec>-1</hudson.remoting.Launcher.pingIntervalSec>
             <com.google.jenkins.plugins.computeengine.integration.ITUtil.windows>${it.windows}</com.google.jenkins.plugins.computeengine.integration.ITUtil.windows>
+            <jenkins.test.timeout>${jenkins.test.timeout}</jenkins.test.timeout>
           </systemPropertyVariables>
           <excludes>
             <exclude>**/ITUtil.java</exclude>
           </excludes>
-          <argLine>-Djenkins.test.timeout=${jenkinsRuleTimeout}</argLine>
           <runOrder>${it.runOrder}</runOrder>
           <reuseForks>false</reuseForks>
         </configuration>
@@ -378,6 +398,9 @@
           <skipTests>${skip.surefire.tests}</skipTests>
           <runOrder>balanced</runOrder>
           <reuseForks>false</reuseForks>
+          <systemPropertyVariables>
+            <jenkins.test.timeout>${jenkins.test.timeout}</jenkins.test.timeout>
+          </systemPropertyVariables>
         </configuration>
       </plugin>
       <plugin>
