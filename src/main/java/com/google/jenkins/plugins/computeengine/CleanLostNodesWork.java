@@ -19,6 +19,7 @@ package com.google.jenkins.plugins.computeengine;
 import static java.util.Collections.emptyList;
 
 import com.google.api.services.compute.model.Instance;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.jenkins.plugins.computeengine.client.ComputeClientV2;
 import hudson.Extension;
@@ -31,6 +32,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -46,7 +48,14 @@ public class CleanLostNodesWork extends PeriodicWork {
     public static final String NODE_IN_USE_LABEL_KEY = "jenkins_node_last_refresh";
     public static final long RECURRENCE_PERIOD = Long.parseLong(
             System.getProperty(CleanLostNodesWork.class.getName() + ".recurrencePeriod", String.valueOf(HOUR)));
+
+    @VisibleForTesting
     public static final int LOST_MULTIPLIER = 3;
+    /**
+     * The formatter for the label timestamp value as per google label format,
+     * "The value can only contain lowercase letters, numeric characters, underscores and dashes.
+     * The value can be at most 63 characters long. International characters are allowed".
+     */
     private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd'T'HH_mm_ss_SSSX");
 
     /** {@inheritDoc} */
@@ -56,10 +65,8 @@ public class CleanLostNodesWork extends PeriodicWork {
     }
 
     /**
-     * Returns current time string as human-readable with the format allowed in GCP label.
-     * GCP label format: "The value can only contain lowercase letters, numeric characters, underscores and dashes.
-     * The value can be at most 63 characters long. International characters are allowed".
-     * Example: 2025_01_07t11_28_06_379z
+     * Returns current timestamp string as human-readable with gcp label format as mentioned in the {@link #formatter} doc,
+     * and converted to lowercase.
      */
     public static String getLastRefreshLabelVal() {
         return formatter.format(OffsetDateTime.now(ZoneOffset.UTC)).toLowerCase();
@@ -92,6 +99,9 @@ public class CleanLostNodesWork extends PeriodicWork {
     }
 
     private boolean isOrphaned(Instance remote, Set<String> localInstances) {
+        /* Check if the remote instance is present in localInstances. Although the remote instance is updated with a new timestamp, it is not yet fetched.
+            It is a local copy in this current execution.
+        */
         if (localInstances.contains(remote.getName())) {
             return false;
         }
