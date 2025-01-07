@@ -18,26 +18,33 @@ import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import com.google.jenkins.plugins.computeengine.client.ComputeClientV2;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import lombok.extern.java.Log;
+import org.hamcrest.Description;
+import org.hamcrest.Matcher;
+import org.hamcrest.TypeSafeMatcher;
+import org.hamcrest.core.Every;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 
-@Log
 public class ComputeClientV2IT {
+
+    private static final Logger LOGGER = Logger.getLogger(ComputeClientV2IT.class.getName());
 
     @Rule
     public JenkinsRule j = new JenkinsRule();
 
-    private static final Map<String, String> googleLabels = getLabel(ComputeClientV2IT.class);
-    private static final Map<String, String> nonJenkinsLabels = Map.of("non-jenkins-label", "non-jenkins-value");
-    private static final Map<String, String> newLabels = Map.of("new-key", "new-value");
+    private static final Map<String, String> GOOGLE_LABELS = getLabel(ComputeClientV2IT.class);
+    private static final Map<String, String> GOOGLE_LABELS_NON_JENKINS =
+            Map.of("non-jenkins-label", "non-jenkins-value");
+    private static final Map<String, String> GOOGLE_LABELS_NEW_LABELS = Map.of("new-key", "new-value");
 
     @Before
     public void setUp() throws Exception {
@@ -47,13 +54,13 @@ public class ComputeClientV2IT {
 
     @After
     public void tearDown() throws IOException {
-        teardownResources(getCloud(j).getClient(), googleLabels, log);
-        teardownResources(getCloud(j).getClient(), nonJenkinsLabels, log);
+        teardownResources(getCloud(j).getClient(), GOOGLE_LABELS, LOGGER);
+        teardownResources(getCloud(j).getClient(), GOOGLE_LABELS_NON_JENKINS, LOGGER);
         // merge googleLabels and newLabels for teardown purposes only
         Map<String, String> allLabels = new HashMap<>();
-        allLabels.putAll(googleLabels);
-        allLabels.putAll(newLabels);
-        teardownResources(getCloud(j).getClient(), allLabels, log);
+        allLabels.putAll(GOOGLE_LABELS);
+        allLabels.putAll(GOOGLE_LABELS_NEW_LABELS);
+        teardownResources(getCloud(j).getClient(), allLabels, LOGGER);
     }
 
     public ComputeEngineCloud getCloud(JenkinsRule j) {
@@ -65,7 +72,7 @@ public class ComputeClientV2IT {
         var instanceConfig = instanceConfigurationBuilder()
                 .numExecutorsStr(NUM_EXECUTORS)
                 .labels(LABEL)
-                .oneShot(false)
+                .oneShot(true)
                 .createSnapshot(false)
                 .template(NULL_TEMPLATE)
                 .zone(ZONE)
@@ -78,12 +85,15 @@ public class ComputeClientV2IT {
 
     @Test
     public void testRetrieveInstancesByLabelAndStatus() throws Exception {
-        ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(getCloud(j));
-        String instance1 = createOneInstance(clientV2, googleLabels);
-        String instance2 = createOneInstance(clientV2, nonJenkinsLabels);
-        await().atMost(2, TimeUnit.MINUTES).until(() -> List.of(getInstance(clientV2, instance1), getInstance(clientV2, instance2)), Every.everyItem(instanceIsRunning()));
-        String jenkinsKey = googleLabels.keySet().iterator().next();
-        String nonJenkinsKey = nonJenkinsLabels.keySet().iterator().next();
+        ComputeClientV2 clientV2 = getCloud(j).getClientV2();
+        String instance1 = createOneInstance(clientV2, GOOGLE_LABELS);
+        String instance2 = createOneInstance(clientV2, GOOGLE_LABELS_NON_JENKINS);
+        await().atMost(2, TimeUnit.MINUTES)
+                .until(
+                        () -> List.of(getInstance(clientV2, instance1), getInstance(clientV2, instance2)),
+                        Every.everyItem(instanceIsRunning()));
+        String jenkinsKey = GOOGLE_LABELS.keySet().iterator().next();
+        String nonJenkinsKey = GOOGLE_LABELS_NON_JENKINS.keySet().iterator().next();
         var matchingInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(jenkinsKey, "RUNNING");
         assertEquals(1, matchingInstances.size());
         assertEquals(instance1, matchingInstances.get(0).getName());
@@ -107,16 +117,16 @@ public class ComputeClientV2IT {
 
     @Test
     public void testUpdateInstanceLabels() throws Exception {
-        ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(getCloud(j));
-        String instance1 = createOneInstance(clientV2, googleLabels);
+        ComputeClientV2 clientV2 = getCloud(j).getClientV2();
+        String instance1 = createOneInstance(clientV2, GOOGLE_LABELS);
         await().atMost(2, TimeUnit.MINUTES).until(() -> Objects.nonNull(getInstance(clientV2, instance1)));
-        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), newLabels);
+        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), GOOGLE_LABELS_NEW_LABELS);
         assertLabel(clientV2, instance1, "new-key", "new-value");
         // change label value see if it gets updated
         clientV2.updateInstanceLabels(getInstance(clientV2, instance1), Map.of("new-key", "new-value-2"));
         assertLabel(clientV2, instance1, "new-key", "new-value-2");
         // change label value back so that instance can get teardown automatically
-        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), newLabels);
+        clientV2.updateInstanceLabels(getInstance(clientV2, instance1), GOOGLE_LABELS_NEW_LABELS);
     }
 
     private static Instance getInstance(ComputeClientV2 clientV2, String instanceName) throws IOException {
@@ -135,5 +145,21 @@ public class ComputeClientV2IT {
             return instance.getLabels().containsKey(key)
                     && instance.getLabels().get(key).equals(value);
         });
+    }
+
+    private Matcher<Instance> instanceIsRunning() {
+        return new RunningStatusMatcher();
+    }
+
+    private static class RunningStatusMatcher extends TypeSafeMatcher<Instance> {
+        @Override
+        protected boolean matchesSafely(Instance instance) {
+            return instance != null && instance.getStatus().equals("RUNNING");
+        }
+
+        @Override
+        public void describeTo(Description description) {
+            description.appendText("instance status is RUNNING");
+        }
     }
 }

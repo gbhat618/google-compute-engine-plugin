@@ -25,10 +25,13 @@ import hudson.Extension;
 import hudson.model.PeriodicWork;
 import hudson.model.Slave;
 import java.io.IOException;
-import java.text.SimpleDateFormat;
+import java.security.GeneralSecurityException;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -40,15 +43,26 @@ import org.jenkinsci.Symbol;
 @Symbol("cleanLostNodesWork")
 public class CleanLostNodesWork extends PeriodicWork {
     protected final Logger logger = Logger.getLogger(getClass().getName());
-    public static final String NODE_IN_USE_LABEL_KEY = "jenkins_node_in_use";
+    public static final String NODE_IN_USE_LABEL_KEY = "jenkins_node_last_refresh";
     public static final long RECURRENCE_PERIOD = Long.parseLong(
             System.getProperty(CleanLostNodesWork.class.getName() + ".recurrencePeriod", String.valueOf(HOUR)));
     public static final int LOST_MULTIPLIER = 3;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd'T'HH_mm_ss_SSSX");
 
     /** {@inheritDoc} */
     @Override
     public long getRecurrencePeriod() {
         return RECURRENCE_PERIOD;
+    }
+
+    /**
+     * Returns current time string as human-readable with the format allowed in GCP label.
+     * GCP label format: "The value can only contain lowercase letters, numeric characters, underscores and dashes.
+     * The value can be at most 63 characters long. International characters are allowed".
+     * Example: 2025_01_07t11_28_06_379z
+     */
+    public static String getLastRefreshLabelVal() {
+        return formatter.format(OffsetDateTime.now(ZoneOffset.UTC)).toLowerCase();
     }
 
     /** {@inheritDoc} */
@@ -60,7 +74,13 @@ public class CleanLostNodesWork extends PeriodicWork {
 
     private void cleanCloud(ComputeEngineCloud cloud) {
         logger.log(Level.FINEST, "Cleaning cloud " + cloud.getCloudName());
-        ComputeClientV2 clientV2 = ComputeClientV2.createFromComputeEngineCloud(cloud);
+        ComputeClientV2 clientV2;
+        try {
+            clientV2 = cloud.getClientV2();
+        } catch (GeneralSecurityException | IOException ex) {
+            logger.log(Level.WARNING, "Error getting clientV2 for cloud " + cloud.getCloudName(), ex);
+            return;
+        }
         List<Instance> remoteInstances = findRunningRemoteInstances(clientV2);
         Set<String> localInstances = findLocalInstances(cloud);
         if (!(localInstances.isEmpty() || remoteInstances.isEmpty())) {
@@ -75,18 +95,17 @@ public class CleanLostNodesWork extends PeriodicWork {
         if (localInstances.contains(remote.getName())) {
             return false;
         }
-        String nodeInUseTs = remote.getLabels().get(NODE_IN_USE_LABEL_KEY);
-        if (nodeInUseTs == null) {
+        String nodeLastRefresh = remote.getLabels().get(NODE_IN_USE_LABEL_KEY);
+        if (nodeLastRefresh == null) {
             return false;
         }
-        long lastUsed = Long.parseLong(nodeInUseTs);
-        var dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSSXXX");
-        dateFormat.setTimeZone(TimeZone.getTimeZone("UTC"));
-        boolean isOrphan = lastUsed < System.currentTimeMillis() - RECURRENCE_PERIOD * LOST_MULTIPLIER;
+        OffsetDateTime lastRefresh = OffsetDateTime.parse(nodeLastRefresh.toUpperCase(), formatter);
+        boolean isOrphan = lastRefresh
+                .plus(RECURRENCE_PERIOD * LOST_MULTIPLIER, ChronoUnit.MILLIS)
+                .isBefore(OffsetDateTime.now(ZoneOffset.UTC));
         logger.log(
                 Level.FINEST,
-                "Instance " + remote.getName() + " last used at: " + dateFormat.format(lastUsed) + ", isOrphan: "
-                        + isOrphan);
+                "Instance " + remote.getName() + " last used at: " + nodeLastRefresh + ", isOrphan: " + isOrphan);
         return isOrphan;
     }
 
@@ -137,7 +156,7 @@ public class CleanLostNodesWork extends PeriodicWork {
             ComputeClientV2 clientV2, Set<String> localInstances, List<Instance> remoteInstances) {
         var remoteInstancesByName =
                 remoteInstances.stream().collect(Collectors.toMap(Instance::getName, instance -> instance));
-        var labelToUpdate = ImmutableMap.of(NODE_IN_USE_LABEL_KEY, String.valueOf(System.currentTimeMillis()));
+        var labelToUpdate = ImmutableMap.of(NODE_IN_USE_LABEL_KEY, getLastRefreshLabelVal());
         for (String instanceName : localInstances) {
             var remoteInstance = remoteInstancesByName.get(instanceName);
             if (remoteInstance == null) {

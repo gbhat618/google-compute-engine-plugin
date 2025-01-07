@@ -4,10 +4,7 @@ import com.google.api.services.compute.Compute;
 import com.google.api.services.compute.model.Instance;
 import com.google.api.services.compute.model.InstancesScopedList;
 import com.google.api.services.compute.model.InstancesSetLabelsRequest;
-import com.google.cloud.graphite.platforms.plugin.client.ComputeClient;
-import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -33,33 +30,6 @@ public class ComputeClientV2 {
     public ComputeClientV2(String projectId, Compute compute) {
         this.projectId = projectId;
         this.compute = compute;
-    }
-
-    /**
-     * Instantiates a {@link ComputeClientV2} using the configuration from a given {@link ComputeEngineCloud}.
-     * <p>Jenkins may host multiple cloud configurations, each with distinct service accounts. This diversity necessitates leveraging an
-     * existing {@link ComputeEngineCloud} instance to accurately configure {@link ComputeClientV2}. Interfacing directly with
-     * {@link ComputeClient} is impractical due to its archived status and inability to extend, as noted in class-level documentation.
-     * Consequently, this method employs reflection to retrieve the necessary {@link Compute} instance from within {@link ComputeClient}.
-     *
-     * @return A newly created {@link ComputeClientV2} instance, configured with the credentials and settings from the specified
-     * {@link ComputeEngineCloud}.
-     */
-    public static ComputeClientV2 createFromComputeEngineCloud(ComputeEngineCloud cloud) {
-        try {
-            ComputeClient client = cloud.getClient();
-            Field f = client.getClass().getDeclaredField("compute");
-            f.setAccessible(true);
-            Object wrapper = f.get(client);
-            Field f2 = wrapper.getClass().getDeclaredField("compute");
-            f2.setAccessible(true);
-            ComputeClientV2 clientV2 = new ComputeClientV2(cloud.getProjectId(), (Compute) f2.get(wrapper));
-            f.setAccessible(false);
-            f2.setAccessible(false);
-            return clientV2;
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     /**

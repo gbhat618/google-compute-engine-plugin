@@ -18,7 +18,6 @@ import com.google.jenkins.plugins.computeengine.ComputeEngineCloud;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
-import java.util.Stack;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -61,17 +60,9 @@ public class CleanLostNodesWorkIT {
 
     @Before
     public void init() throws Throwable {
-        Stack<PrefixedOutputStream.Color> colors = new Stack<>() {
-            {
-                push(PrefixedOutputStream.Color.BLUE);
-                push(PrefixedOutputStream.Color.RED);
-            }
-        };
         for (var rj : List.of(rj1, rj2)) {
-            rj.javaOptions("-Djenkins.cloud.gcp.cleanLostNodesWork.recurrencePeriod="
-                            + CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD)
-                    .withLogger(CleanLostNodesWork.class, Level.FINEST)
-                    .withColor(colors.pop());
+            rj.javaOptions("-D" + CleanLostNodesWork.class.getName() + ".recurrencePeriod=" + CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD)
+                    .withLogger(CleanLostNodesWork.class, Level.FINEST);
             rj.startJenkins();
             rj.runRemotely(r -> {
                 initCredentials(r);
@@ -82,7 +73,7 @@ public class CleanLostNodesWorkIT {
                         .oneShot(true)
                         .createSnapshot(false)
                         .template(NULL_TEMPLATE)
-                        .googleLabels(googleLabels)
+                        .googleLabels(GOOGLE_LABELS)
                         .cloud(cloud)
                         .build();
                 cloud.setConfigurations(ImmutableList.of(instanceConfig));
@@ -94,8 +85,9 @@ public class CleanLostNodesWorkIT {
     @After
     public void tearDown() throws Throwable {
         rj2.runRemotely(j -> {
+            j.waitUntilNoActivity();
             var cloud = (ComputeEngineCloud) j.jenkins.clouds.getByName("gce-integration");
-            teardownResources(cloud.getClient(), googleLabels, log);
+            teardownResources(cloud.getClient(), GOOGLE_LABELS, LOGGER);
         });
     }
 
@@ -136,7 +128,7 @@ public class CleanLostNodesWorkIT {
             try (var tail = new TailLog(j, "p1", 1).withColor(PrefixedOutputStream.Color.MAGENTA)) {
                 var run = p1.scheduleBuild2(0).waitForStart();
                 await().timeout(4, TimeUnit.MINUTES).until(() -> run.getLog().contains("first sleep done"));
-                log.info("Build is already running, can proceed to stopping jenkins to make the agent a lost VM");
+                LOGGER.info("Build is already running, can proceed to stopping jenkins to make the agent a lost VM");
                 RealJenkinsLogUtil.assertLogContains(
                         j,
                         LOG_RECORDER_NAME,
@@ -144,7 +136,7 @@ public class CleanLostNodesWorkIT {
                         "Found 1 local instances",
                         "Updated label for instance");
                 RealJenkinsLogUtil.assertLogDoesNotContain(
-                        j, LOG_RECORDER_NAME, "isOrphan: true", "not found locally, removing it");
+                        j, LOG_RECORDER_NAME, "isOrphan: true", "Removing orphaned instance");
             }
         });
         rj1.stopJenkins();
@@ -155,28 +147,28 @@ public class CleanLostNodesWorkIT {
                     "VM is still there",
                     1,
                     cloud.getClient()
-                            .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
+                            .listInstancesWithLabel(cloud.getProjectId(), GOOGLE_LABELS)
                             .size());
 
-            log.info("test sleeps for " + getSleepSeconds() + " seconds; so that the lost VM is detected by the "
+            LOGGER.info("test sleeps for " + getSleepSeconds() + " seconds; so that the lost VM is detected by the "
                     + "second controller and it is deleted");
             TimeUnit.SECONDS.sleep(getSleepSeconds());
-            log.info("proceeding after sleep");
+            LOGGER.info("proceeding after sleep");
 
-            var instances = cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), googleLabels);
+            var instances = cloud.getClient().listInstancesWithLabel(cloud.getProjectId(), GOOGLE_LABELS);
             if (!instances.isEmpty()) {
                 assertNotEquals(
                         "VM is not running",
                         "RUNNING",
                         cloud.getClient()
-                                .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
+                                .listInstancesWithLabel(cloud.getProjectId(), GOOGLE_LABELS)
                                 .get(0)
                                 .getStatus());
             }
             await("VM didn't get removed even after waiting 2 minutes after it was stopped")
                     .timeout(2, TimeUnit.MINUTES)
                     .until(() -> cloud.getClient()
-                            .listInstancesWithLabel(cloud.getProjectId(), googleLabels)
+                            .listInstancesWithLabel(cloud.getProjectId(), GOOGLE_LABELS)
                             .isEmpty());
             RealJenkinsLogUtil.assertLogContains(
                     j,
