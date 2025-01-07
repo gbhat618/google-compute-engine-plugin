@@ -79,7 +79,7 @@ public class CleanLostNodesWorkIT {
                 var instanceConfig = instanceConfigurationBuilder()
                         .numExecutorsStr(NUM_EXECUTORS)
                         .labels(LABEL)
-                        .oneShot(false)
+                        .oneShot(true)
                         .createSnapshot(false)
                         .template(NULL_TEMPLATE)
                         .googleLabels(googleLabels)
