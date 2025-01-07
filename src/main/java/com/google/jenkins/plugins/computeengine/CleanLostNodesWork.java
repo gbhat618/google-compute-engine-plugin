@@ -105,7 +105,7 @@ public class CleanLostNodesWork extends PeriodicWork {
                 .isBefore(OffsetDateTime.now(ZoneOffset.UTC));
         logger.log(
                 Level.FINEST,
-                "Instance " + remote.getName() + " last used at: " + nodeLastRefresh + ", isOrphan: " + isOrphan);
+                "Instance " + remote.getName() + " last_refresh label value: " + nodeLastRefresh + ", isOrphan: " + isOrphan);
         return isOrphan;
     }
 
