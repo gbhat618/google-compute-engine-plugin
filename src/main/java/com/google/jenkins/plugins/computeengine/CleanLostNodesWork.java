@@ -64,10 +64,6 @@ public class CleanLostNodesWork extends PeriodicWork {
         return RECURRENCE_PERIOD;
     }
 
-    /**
-     * Returns current timestamp string as human-readable with gcp label format as mentioned in the {@link #formatter} doc,
-     * and converted to lowercase.
-     */
     public static String getLastRefreshLabelVal() {
         return formatter.format(OffsetDateTime.now(ZoneOffset.UTC));
     }
