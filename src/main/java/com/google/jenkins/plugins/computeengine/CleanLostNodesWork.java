@@ -27,12 +27,12 @@ import hudson.model.PeriodicWork;
 import hudson.model.Slave;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -56,7 +56,7 @@ public class CleanLostNodesWork extends PeriodicWork {
      * "The value can only contain lowercase letters, numeric characters, underscores and dashes.
      * The value can be at most 63 characters long. International characters are allowed".
      */
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd'T'HH_mm_ss_SSSX");
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy_MM_dd't'HH_mm_ss_SSS'utc'");
 
     /** {@inheritDoc} */
     @Override
@@ -69,7 +69,7 @@ public class CleanLostNodesWork extends PeriodicWork {
      * and converted to lowercase.
      */
     public static String getLastRefreshLabelVal() {
-        return formatter.format(OffsetDateTime.now(ZoneOffset.UTC)).toLowerCase(Locale.ROOT);
+        return formatter.format(OffsetDateTime.now(ZoneOffset.UTC));
     }
 
     /** {@inheritDoc} */
@@ -110,7 +110,8 @@ public class CleanLostNodesWork extends PeriodicWork {
         if (nodeLastRefresh == null) {
             return false;
         }
-        OffsetDateTime lastRefresh = OffsetDateTime.parse(nodeLastRefresh.toUpperCase(Locale.ROOT), formatter);
+        OffsetDateTime lastRefresh =
+                LocalDateTime.parse(nodeLastRefresh, formatter).atOffset(ZoneOffset.UTC);
         boolean isOrphan = lastRefresh
                 .plus(RECURRENCE_PERIOD * LOST_MULTIPLIER, ChronoUnit.MILLIS)
                 .isBefore(OffsetDateTime.now(ZoneOffset.UTC));
