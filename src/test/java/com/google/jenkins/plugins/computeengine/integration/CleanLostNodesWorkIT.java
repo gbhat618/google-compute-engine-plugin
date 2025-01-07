@@ -61,7 +61,8 @@ public class CleanLostNodesWorkIT {
     @Before
     public void init() throws Throwable {
         for (var rj : List.of(rj1, rj2)) {
-            rj.javaOptions("-D" + CleanLostNodesWork.class.getName() + ".recurrencePeriod=" + CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD)
+            rj.javaOptions("-D" + CleanLostNodesWork.class.getName() + ".recurrencePeriod="
+                            + CLEAN_LOST_NODES_WORK_RECURRENCE_PERIOD)
                     .withLogger(CleanLostNodesWork.class, Level.FINEST);
             rj.startJenkins();
             rj.runRemotely(r -> {
