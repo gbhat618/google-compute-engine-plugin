@@ -69,7 +69,7 @@ public class CleanLostNodesWork extends PeriodicWork {
      * and converted to lowercase.
      */
     public static String getLastRefreshLabelVal() {
-        return formatter.format(OffsetDateTime.now(ZoneOffset.UTC)).toLowerCase();
+        return formatter.format(OffsetDateTime.now(ZoneOffset.UTC)).toLowerCase(Locale.ROOT);
     }
 
     /** {@inheritDoc} */
@@ -109,7 +109,7 @@ public class CleanLostNodesWork extends PeriodicWork {
         if (nodeLastRefresh == null) {
             return false;
         }
-        OffsetDateTime lastRefresh = OffsetDateTime.parse(nodeLastRefresh.toUpperCase(), formatter);
+        OffsetDateTime lastRefresh = OffsetDateTime.parse(nodeLastRefresh.toUpperCase(Locale.ROOT), formatter);
         boolean isOrphan = lastRefresh
                 .plus(RECURRENCE_PERIOD * LOST_MULTIPLIER, ChronoUnit.MILLIS)
                 .isBefore(OffsetDateTime.now(ZoneOffset.UTC));
