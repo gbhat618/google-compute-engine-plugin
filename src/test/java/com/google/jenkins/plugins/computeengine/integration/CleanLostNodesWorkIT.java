@@ -34,7 +34,7 @@ import org.jvnet.hudson.test.RealJenkinsRule;
 import org.jvnet.hudson.test.TailLog;
 
 public class CleanLostNodesWorkIT {
-    private static final Logger log = Logger.getLogger(CleanLostNodesWorkIT.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(CleanLostNodesWorkIT.class.getName());
     private static final String LOG_RECORDER_NAME = "CleanLostNodesWork log recorder";
     /*
     Provisioning a Cloud VM encounters two primary delays:
