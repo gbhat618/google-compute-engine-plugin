@@ -15,7 +15,7 @@ jenkins:
             numExecutorsStr:    1
             runAsUser:          jenkins
             remoteFs:           ''
-            oneShot:            true
+            oneShot:            false
             createSnapshot:     false
             region:             "https://www.googleapis.com/compute/v1/projects/${env.GOOGLE_PROJECT_ID}/regions/${env.GOOGLE_REGION}"
             zone:               "https://www.googleapis.com/compute/v1/projects/${env.GOOGLE_PROJECT_ID}/zones/${env.GOOGLE_ZONE}"
@@ -34,8 +34,8 @@ jenkins:
               singleStack:
                 externalIPV4Address:    true
             useInternalAddress: false
-            bootDiskSourceImageProject: ${env.GOOGLE_BOOT_DISK_PROJECT_ID}
-            bootDiskSourceImageName: "projects/${env.GOOGLE_BOOT_DISK_PROJECT_ID}/global/images/${env.GOOGLE_BOOT_DISK_IMAGE_NAME}"
+            bootDiskSourceImageProject: ${env.GOOGLE_PROJECT_ID}
+            bootDiskSourceImageName: "projects/${env.GOOGLE_PROJECT_ID}/global/images/jenkins-gce-integration-test-jre"
             bootDiskType:       "https://www.googleapis.com/compute/v1/projects/${env.GOOGLE_PROJECT_ID}/zones/${env.GOOGLE_ZONE}/diskTypes/pd-standard"
             bootDiskSizeGbStr:  20
             bootDiskAutoDelete: true
