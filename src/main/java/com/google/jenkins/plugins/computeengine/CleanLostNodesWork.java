@@ -173,7 +173,7 @@ public class CleanLostNodesWork extends PeriodicWork {
             }
             try {
                 clientV2.updateInstanceLabels(remoteInstance, labelToUpdate);
-                logger.log(Level.FINEST, "Updated label for instance " + instanceName);
+                logger.log(Level.FINEST, () -> "Updated label for instance " + instanceName);
             } catch (IOException e) {
                 logger.log(Level.WARNING, "Error updating label for instance " + instanceName, e);
             }
