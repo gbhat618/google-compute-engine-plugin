@@ -142,7 +142,7 @@ public class CleanLostNodesWork extends PeriodicWork {
                 .filter(node -> node.getCloud().equals(cloud))
                 .map(Slave::getNodeName)
                 .collect(Collectors.toSet());
-        logger.log(Level.FINEST, "Found " + localInstances.size() + " local instances");
+        logger.log(Level.FINEST, () -> "Found " + localInstances.size() + " local instances");
         return localInstances;
     }
 
