@@ -149,7 +149,7 @@ public class CleanLostNodesWork extends PeriodicWork {
     private List<Instance> findRunningRemoteInstances(ComputeClientV2 clientV2) {
         try {
             var remoteInstances = clientV2.retrieveInstanceByLabelKeyAndStatus(NODE_IN_USE_LABEL_KEY, "RUNNING");
-            logger.log(Level.FINEST, "Found " + remoteInstances.size() + " running remote instances");
+            logger.log(Level.FINEST, () -> "Found " + remoteInstances.size() + " running remote instances");
             return remoteInstances;
         } catch (IOException ex) {
             logger.log(Level.WARNING, "Error finding remote instances", ex);
